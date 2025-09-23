@@ -93,12 +93,9 @@ We are going to work with a lot of sources of data, however, the goal of this ha
 
 These data stores are pre-structured to help you focus on building and orchestrating your agents, rather than spending time on data preparation. You will interact with these containers and indexes throughout the hackathon.
 
-
-WIP
 ```bash
-ingestion
+./seed_data.sh
 ```
-
 
 ## Conclusion
 By reaching this section you should have every resource and installed the requirements necessary to conduct the hackathon. In the next challenges, you will use these services to start strongly your Azure AI Agents journey.

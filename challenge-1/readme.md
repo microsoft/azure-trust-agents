@@ -15,7 +15,6 @@ In this challenge, we will create 3 specialized agents that form the backbone of
 | Audit Trail & Explanation Agent | Generate transparent, regulator-ready case files          | Alerts, risk scores, rules from Cosmos DB, citations from AI Search        | Cosmos DB, Azure AI Search |
 
 
-
 ## Exercise Guide 
 
 ### Part 1 - Creation of your Agents
@@ -78,5 +77,3 @@ In `Sequential Orchestration` the Agents are dependent on a task performed from 
 
 When building intelligent agents, you have two primary implementation approaches available in the Azure ecosystem. **Azure AI Agent Service with direct tool connections** provides a streamlined, low-code approach where agents are configured through the Azure AI Foundry portal with direct connections to Azure services like Azure AI Search, enabling rapid prototyping and deployment with built-in enterprise features like security, monitoring, and compliance. This approach is ideal for straightforward scenarios where agents need to access specific Azure services without complex custom logic. In contrast, **Azure AI Agents with Semantic Kernel integration** offers a more flexible, code-first approach that combines the enterprise-grade capabilities of Azure AI Agent Service with Semantic Kernel's powerful plugin framework. This hybrid approach allows developers to create custom plugins with complex business logic, advanced data processing capabilities, and sophisticated integrations (like our Cosmos DB plugin for retrieving structured claim data), while still benefiting from Azure's managed infrastructure and security features. The Semantic Kernel approach is particularly valuable when you need custom data transformations, complex orchestration patterns, or when integrating with *non-Azure* services.
 
-
-1. 
