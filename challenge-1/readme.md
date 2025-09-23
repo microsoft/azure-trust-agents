@@ -37,8 +37,11 @@ cd challenge-1/agents && python audit-agent.py
 
 3. Repeat steps 1. and 2. for the other 2 agents. 
 
-Now, you should have 3 agents created. 
-Go back to your `.env` file address in root and add the following variables with the respective IDS:
+Now, you should have 3 agents created looking like this:
+
+![alt text](image.png)
+
+Go back to your `.env` file address in root and add the following variables with the respective IDs that were just printed:
 
 ```bash
 AUDIT_AGENT_ID=""

@@ -7,7 +7,13 @@ Welcome to the Automated Compliance Agents Hackathon! 🏦 Today, you'll dive in
 
 Get ready to transform compliance with AI! In this hackathon, you'll build intelligent agents that parse regulations, monitor transactions, and generate transparent audit trails—just like real compliance teams. From reading new laws to flagging suspicious activity, your agents will collaborate to automate complex regulatory workflows in minutes, not months. By the end, you'll have created a powerful multi-agent system that redefines how financial institutions stay compliant and build trust. 
 
+
+## Data Flow
+WIP
+
 ## Architecture 🏗️
+WIP
+
 
 
 ## Requirements 📋
