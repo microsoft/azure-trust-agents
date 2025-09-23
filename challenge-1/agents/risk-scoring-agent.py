@@ -35,7 +35,7 @@ async def main():
             - id,
             - txn_id,
             - account_id,
-            - risk_score (0–1),
+            - risk_score (from 0 to 1),
             - triggered_rules (list of rule IDs),
             - features (velocity, geo_mismatch, unusual_behavior),
             - status ("open"),
