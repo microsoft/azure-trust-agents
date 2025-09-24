@@ -9,7 +9,8 @@ Get ready to transform compliance with AI! In this hackathon, you'll build intel
 
 
 ## Data Flow
-WIP
+<img width="1224" height="273" alt="image" src="https://github.com/user-attachments/assets/b58f5a84-b8db-47ce-87bf-cfac67d7fd38" />
+
 
 ## Architecture 🏗️
 WIP
