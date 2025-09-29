@@ -26,7 +26,6 @@ This project implements an end-to-end AI-driven compliance monitoring workflow. 
 
 The pipeline is automated with BlobTrigger and HTTPTrigger, ensuring continuous monitoring of flagged events, rapid response to high-risk activities, and robust compliance reporting.
 
-![alt text](image-3.png)
 
 ## Architecture 🏗️
 WIP
@@ -44,9 +43,13 @@ To successfully complete this hackathon, you will need the following:
 
 ## Challenges 🚩
 
-- Challenge 00: **[Environment Setup & Azure Resource Deployment](challenge-0/readme.md)** : Resource Deployment, Github Codespaces + .env Variables + Data Ingestion
-- Challenge 01: **[Create your Agents](challenge-1/readme.md)** : Creation of the Blob trigger function- 30mn
-- Challenge 02: **[Extend your Agents](challenge-2/readme.md)** : Creation of the 2 agents and orchestration (risk analyser and compliance report agent)
-- Challenge 03: **[Use your Memory | Cosmos DB ](challenge-3/readme.md)** : Build your API for the trigger
-- Challenge 04: **[Gain peace of mind](challenge-4/readme.md)** : APIM + Security
-- Challenge 05: **[Gain peace of mind](challenge-4/readme.md)** : MmeoryResponsible AI (Evaluation with GH Actions, Observability, Safety)
+### 🎯 Challenge Roadmap
+
+| Challenge | Title | Description | Duration |
+|-----------|-------|-------------|----------|
+| **00** 🏗️ | **[Environment Setup & Azure Resource Deployment](challenge-0/readme.md)** | Set up your development environment, deploy Azure resources, configure Github Codespaces with environment variables, and ingest sample data | ⏱️ **30 mins** |
+| **01** 🤖 | **[Create your Agents](challenge-1/readme.md)** | Build two intelligent agents: Data Ingestion Agent and Transaction Analyst Agent, and orchestrate them to work together | ⏱️ **30 mins** |
+| **02** 🧠 | **[Extend your Agents](challenge-2/readme.md)** | Add persistent memory capabilities using Azure Cosmos DB and expose agent functionality through REST APIs | ⏱️ **60 mins** |
+| **03** 🔐 | **[Deploy to APIM + API Security](challenge-3/readme.md)** | Deploy your agents to Azure API Management (APIM) and implement comprehensive API security controls | ⏱️ **60 mins** |
+| **04** ✅ | **[Responsible AI & Observability](challenge-4/readme.md)** | Implement evaluation frameworks with GitHub Actions, add observability monitoring, and ensure AI safety best practices | ⏱️ **60 mins** |
+| **05** 🚀 | **[Advanced Features](challenge-5/readme.md)** | Take your solution to the next level with advanced capabilities (TBD) | ⏱️ **60 mins** |

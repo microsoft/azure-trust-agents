@@ -8,7 +8,6 @@ In this challenge, you'll create specialized AI agents for fraud detection and o
 
 Finally, you'll create a ChatCompletionAgent to serve as the final decision maker and orchestrate all three agents using Semantic Kernel's GroupChatOrchestration to analyze transactions for potential fraud in an automated, intelligent workflow.
 
-![alt text](image.png)
 
 ## Step-by-Step Guide 📋
 
@@ -183,11 +182,6 @@ Before running the orchestration, let's understand how the three agents will wor
    - Uses RoundRobinGroupChatManager (agents take turns)
    - Max 4 rounds of conversation
 
-**💡 Key Architecture Points:**
-- **Data Ingestion Agent**: Fetches raw data from Cosmos DB
-- **Transaction Analyst Agent**: Analyzes data for fraud indicators using ML + rules
-- **Fraud Decision Approver**: Reviews both analyses and makes final decision
-- **Orchestration**: Manages the workflow and agent communication
 
 ---
 
@@ -285,37 +279,6 @@ Choose any transaction from `challenge-0/data/transactions.json`:
 
 ---
 
-### Step 8: Understanding the Agent Workflow 🔄
-
-Let's trace how data flows through the system:
-
-**Workflow Diagram:**
-```
-1. User Request
-   ↓
-2. Data Ingestion Agent
-   - Calls: get_customer(CUST1001)
-   - Calls: get_transaction(TX1001)
-   - Output: Normalized JSON data
-   ↓
-3. Transaction Analyst Agent
-   - Receives: Normalized data
-   - Calls: get_ml_prediction(TX1001)
-   - Calls: Azure AI Search for regulations
-   - Output: Risk score + reasoning
-   ↓
-4. Fraud Decision Approver
-   - Receives: All data + analysis
-   - Applies: Decision criteria
-   - Output: FRAUD/SUSPICIOUS/LEGITIMATE + recommendations
-   ↓
-5. Final Result
-   - Complete fraud analysis
-   - Structured JSON output
-   - Actionable recommendations
-```
-
-**📝 Task:** Review the console output from your orchestration run and identify where each step occurs in the logs.
 
 
 ## Key Learnings 🎓
