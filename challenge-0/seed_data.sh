@@ -28,14 +28,27 @@ from azure.search.documents.indexes import SearchIndexClient
 from azure.search.documents.indexes.models import SearchIndex, SimpleField, SearchableField
 from azure.core.credentials import AzureKeyCredential
 
-def load_jsonl_data(file_path):
-    """Load data from JSONL file"""
+def load_json_data(file_path):
+    """Load data from JSON or JSONL file"""
     data = []
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                if line.strip():
-                    data.append(json.loads(line))
+            # Check if it's a JSONL file (one JSON object per line)
+            if file_path.endswith('.jsonl'):
+                for line in f:
+                    if line.strip():
+                        data.append(json.loads(line))
+            else:
+                # Regular JSON file - load entire content
+                content = json.load(f)
+                # If it's a dict (like ml_predictions.json), convert to list of items
+                if isinstance(content, dict):
+                    data = [{"id": k, "value": v} for k, v in content.items()]
+                # If it's already a list, use it as is
+                elif isinstance(content, list):
+                    data = content
+                else:
+                    data = [content]
         print(f"✅ Loaded {len(data)} records from {file_path}")
         return data
     except Exception as e:
@@ -43,7 +56,7 @@ def load_jsonl_data(file_path):
         return []
 
 def setup_cosmos_db():
-    """Set up Cosmos DB database and containers"""
+    """Set up Cosmos DB database and containers for each file in the data folder"""
     print("📦 Setting up Cosmos DB...")
     
     # Initialize Cosmos client
@@ -58,16 +71,15 @@ def setup_cosmos_db():
         print(f"❌ Error creating database: {e}")
         return None, None
     
-    # Create containers
-    containers = {
-        'Transactions': '/id',
-        'Rules': '/id', 
-        'Alerts': '/id',
-        'AuditReports': '/id'
-    }
-    
+    # Dynamically create containers for each file in the data folder
+    data_folder = "data"
+    import glob
+    import os as pyos
     container_clients = {}
-    for container_name, partition_key in containers.items():
+    for file_path in glob.glob(f"{data_folder}/*.json*"):
+        file_name = pyos.path.basename(file_path)
+        container_name = file_name.replace('.jsonl', '').replace('.json', '').replace('_', '').capitalize()  # e.g. customers.json -> Customers
+        partition_key = '/id'
         try:
             container = database.create_container_if_not_exists(
                 id=container_name,
@@ -83,18 +95,14 @@ def setup_cosmos_db():
 def seed_cosmos_data(container_clients):
     """Seed data into Cosmos DB containers"""
     print("📦 Seeding Cosmos DB data...")
-    
-    # Data file mappings
-    data_mappings = {
-        'Transactions': 'data/transactions.jsonl',
-        'Rules': 'data/rules.jsonl',
-        'Alerts': 'data/alerts.jsonl', 
-        'AuditReports': 'data/audit_reports.jsonl'
-    }
-    
-    for container_name, file_path in data_mappings.items():
+    import glob
+    import os as pyos
+    data_folder = "data"
+    for file_path in glob.glob(f"{data_folder}/*.json*"):
+        file_name = pyos.path.basename(file_path)
+        container_name = file_name.replace('.jsonl', '').replace('.json', '').replace('_', '').capitalize()
         if container_name in container_clients:
-            data = load_jsonl_data(file_path)
+            data = load_json_data(file_path)
             if data:
                 container = container_clients[container_name]
                 success_count = 0
@@ -102,22 +110,18 @@ def seed_cosmos_data(container_clients):
                     try:
                         # Ensure document has an id
                         if 'id' not in item:
-                            # Try different id fields based on container
-                            if container_name == 'Transactions':
-                                item['id'] = str(item.get('transactionId', f'tx_{success_count}'))
-                            elif container_name == 'Rules':
-                                item['id'] = str(item.get('ruleId', f'rule_{success_count}'))
-                            elif container_name == 'Alerts':
-                                item['id'] = str(item.get('alertId', f'alert_{success_count}'))
-                            elif container_name == 'AuditReports':
-                                item['id'] = str(item.get('reportId', f'report_{success_count}'))
-                        
+                            # Try to infer id field
+                            for key in ['transaction_id', 'customer_id', 'id']:
+                                if key in item:
+                                    item['id'] = str(item[key])
+                                    break
+                            else:
+                                item['id'] = f'{container_name.lower()}_{success_count}'
                         container.create_item(body=item)
                         success_count += 1
                     except Exception as e:
                         if "Conflict" not in str(e):  # Ignore conflicts (already exists)
                             print(f"⚠️ Error inserting item into {container_name}: {e}")
-                
                 print(f"✅ Imported {success_count} items into {container_name}")
 
 def setup_search_service():
@@ -130,7 +134,7 @@ def setup_search_service():
     index_client = SearchIndexClient(endpoint=search_endpoint, credential=credential)
     
     # Create indexes
-    indexes = ['regulations-policies', 'case-explanations']
+    indexes = ['regulations-policies']
     
     for index_name in indexes:
         try:
@@ -156,12 +160,11 @@ def seed_search_data(search_endpoint, credential):
     
     # Data file mappings
     index_mappings = {
-        'regulations-policies': 'data/regulations.jsonl',
-        'case-explanations': 'data/case_explanations.jsonl'
+        'regulations-policies': 'data/regulations.jsonl'
     }
     
     for index_name, file_path in index_mappings.items():
-        data = load_jsonl_data(file_path)
+        data = load_json_data(file_path)
         if data:
             search_client = SearchClient(endpoint=search_endpoint, index_name=index_name, credential=credential)
             

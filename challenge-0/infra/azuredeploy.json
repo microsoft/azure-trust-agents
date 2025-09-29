@@ -47,7 +47,7 @@
       "name": "[format('{0}-apim-{1}', variables('prefix'), variables('suffix'))]",
       "location": "[parameters('location')]",
       "sku": {
-        "name": "Premium",
+        "name": "StandardV2",
         "capacity": 1
       },
       "properties": {
@@ -336,14 +336,14 @@
     {
       "type": "Microsoft.CognitiveServices/accounts/deployments",
       "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('aiFoundryName'), 'gpt-5-mini')]",
+      "name": "[format('{0}/{1}', variables('aiFoundryName'), 'gpt-4.1-mini')]",
       "sku": {
         "capacity": 200,
         "name": "GlobalStandard"
       },
       "properties": {
         "model": {
-          "name": "gpt-5-mini",
+          "name": "gpt-4.1-mini",
           "format": "OpenAI"
         }
       },
@@ -367,7 +367,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('aiFoundryName'), 'gpt-5-mini')]"
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('aiFoundryName'), 'gpt-4.1-mini')]"
 
       ]
     },
@@ -498,7 +498,7 @@
       "value": "[format('https://ai.azure.com/build/overview?wsid={0}', resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName')))]"
     },
     "cosmosDbAccountName": {
-  "type": "string",
+      "type": "string",
       "value": "[variables('cosmosDbAccountName')]"
     },
     "cosmosDbEndpoint": {

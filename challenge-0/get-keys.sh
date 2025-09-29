@@ -279,6 +279,11 @@ echo "LOG_ANALYTICS_WORKSPACE_NAME=\"$logAnalyticsWorkspaceName\"" >> ../.env
 echo "SEARCH_SERVICE_NAME=\"$searchServiceName\"" >> ../.env
 echo "SEARCH_SERVICE_ENDPOINT=\"$searchServiceEndpoint\"" >> ../.env
 echo "SEARCH_ADMIN_KEY=\"$searchServiceKey\"" >> ../.env
+
+# Azure Search variables for document processor compatibility
+echo "AZURE_SEARCH_ENDPOINT=\"$searchServiceEndpoint\"" >> ../.env
+echo "AZURE_SEARCH_API_KEY=\"$searchServiceKey\"" >> ../.env
+
 echo "AI_FOUNDRY_HUB_NAME=\"$aiFoundryHubName\"" >> ../.env
 echo "AI_FOUNDRY_PROJECT_NAME=\"$aiFoundryProjectName\"" >> ../.env
 echo "AI_FOUNDRY_ENDPOINT=\"$aiFoundryEndpoint\"" >> ../.env

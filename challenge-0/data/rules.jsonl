@@ -1,2 +1,0 @@
-{"id": "AML2023-05:4.2.1","regulation_id": "AML2023-05","jurisdiction": "EU","effective_date": "2023-11-01","clause_id": "4.2.1","requirement": "Flag all cash transactions > €10,000","mapped_feature": "transaction.amount","threshold": 10000,"action": "alert"}
-{"id": "AML2023-05:4.2.2","regulation_id": "AML2023-05","jurisdiction": "EU","effective_date": "2023-11-01","clause_id": "4.2.2","requirement": "Flag transactions involving high-risk countries","mapped_feature": "transaction.counterparty_country","threshold": ["IR","SY","AF"],"action": "alert"}
