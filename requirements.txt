@@ -20,6 +20,7 @@ azure-identity==1.23.1
 azure-search==1.0.0b2
 azure-search-documents==11.5.3
 azure-storage-blob==12.25.1
+mem0ai==0.1.104
 certifi==2025.7.9
 cffi==1.17.1
 chardet==5.2.0
