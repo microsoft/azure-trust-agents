@@ -1,0 +1,25 @@
+# FastAPI and web server dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic>=2.7.0,<3.0.0
+
+# Azure SDK dependencies
+azure-identity==1.15.0
+azure-cosmos==4.5.1
+azure-ai-projects>=1.0.0b12
+
+# Semantic Kernel dependencies  
+semantic-kernel==1.36.0
+
+# Memory system dependencies
+mem0ai==0.1.20
+
+# Environment and configuration
+python-dotenv==1.0.0
+
+# Utility dependencies
+httpx==0.25.2
+asyncio-throttle==1.0.2
+
+# Logging and monitoring (optional but recommended)
+structlog==23.2.0

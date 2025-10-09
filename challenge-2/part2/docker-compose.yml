@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  fraud-detection-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Azure OpenAI Configuration
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME}
+      - AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=${AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME}
+      
+      # Azure AI Foundry Configuration
+      - AI_FOUNDRY_PROJECT_ENDPOINT=${AI_FOUNDRY_PROJECT_ENDPOINT}
+      - DATA_INGESTION_AGENT_ID=${DATA_INGESTION_AGENT_ID}
+      - TRANSACTION_ANALYST_AGENT_ID=${TRANSACTION_ANALYST_AGENT_ID}
+      
+      # Azure Cosmos DB Configuration
+      - COSMOS_ENDPOINT=${COSMOS_ENDPOINT}
+      - COSMOS_KEY=${COSMOS_KEY}
+      
+      # Azure AI Search Configuration (for memory)
+      - SEARCH_SERVICE_ENDPOINT=${SEARCH_SERVICE_ENDPOINT}
+      - SEARCH_ADMIN_KEY=${SEARCH_ADMIN_KEY}
+      
+      # Application Configuration
+      - PORT=8000
+      - LOG_LEVEL=info
+    
+    volumes:
+      - ./.env:/app/.env:ro  # Mount .env file as read-only
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    restart: unless-stopped
+
+networks:
+  default:
+    name: fraud-detection-network

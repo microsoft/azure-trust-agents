@@ -281,6 +281,89 @@ Choose any transaction from `challenge-0/data/transactions.json`:
 
 
 
+## 🚀 Advanced: Production-Ready Orchestration Framework
+
+After completing the basic challenge, explore the **new orchestration framework** that provides enterprise-grade fraud detection:
+
+### What's New
+
+The `orchestration/` folder contains a production-ready framework based on the [Microsoft Agent Framework](https://github.com/akshata29/agents) reference architecture:
+
+✅ **Structured Planning** - Dynamic plan generation with dependencies
+✅ **Human-in-the-Loop** - Approval workflow for critical decisions  
+✅ **REST API** - FastAPI web service with comprehensive endpoints
+✅ **Batch Processing** - Analyze multiple transactions efficiently
+✅ **Audit Trail** - Complete execution history in CosmosDB
+✅ **CLI Interface** - Command-line tools for operations
+✅ **Risk Scoring** - Comprehensive risk analysis with explainable factors
+
+### Quick Start
+
+```bash
+# Run the new orchestration demo
+./start.sh demo
+
+# Start the REST API server
+./start.sh api
+
+# Interactive CLI
+./start.sh cli
+
+# Compare orchestration approaches
+./start.sh integration
+
+# Analyze specific transaction
+./start.sh analyze TX1001 CUST1001
+```
+
+### Key Differences
+
+| Feature | Original (multi-agents/) | New (orchestration/) |
+|---------|-------------------------|----------------------|
+| **Approach** | Direct GroupChat scripting | Framework with GroupChat |
+| **Interface** | Python scripts | REST API + CLI + Framework |
+| **Workflow** | Real-time agent chat | Real-time chat with structure |
+| **Decision Model** | Free-form text | Structured extraction from chat |
+| **Persistence** | None | Complete audit trail in CosmosDB |
+| **Production Ready** | Demo/Learning | Enterprise deployment |
+
+### Architecture Comparison
+
+**Original Multi-Agents (Learning/Demo):**
+```
+User → Python Script → GroupChatOrchestration → Agents → Console Output
+```
+
+**New Orchestration Framework (Production):**
+```
+User → REST API → FraudOrchestrator → GroupChat → Agents → Structured Response → Database
+```
+
+### When to Use Which
+
+- **Use Original** for learning agent concepts and simple GroupChat orchestration
+- **Use New Framework** for production fraud detection with API, persistence, and structure
+- **Both use GroupChat** - the difference is in the framework wrapper and features
+
+### Integration Example
+
+```python
+# Method 1: Framework-wrapped GroupChat (Production)
+from orchestration import FraudOrchestrator
+orchestrator = FraudOrchestrator()
+result = await orchestrator.analyze_transaction("TX1001", "CUST1001")
+# Returns structured FraudAnalysisResponse with decision, risk score, etc.
+
+# Method 2: Direct GroupChat (Learning)  
+from multi_agents.orchestration import orchestrate_fraud_detection
+result = await orchestrate_fraud_detection("TX1001", "CUST1001")
+# Returns raw conversation result
+```
+
+See `integration_demo.py` for a complete demo and usage examples.
+
+---
+
 ## Key Learnings 🎓
 
 After completing this challenge, you should understand:
@@ -288,8 +371,10 @@ After completing this challenge, you should understand:
 1. **Azure AI Agent Service**: How to create agents in Azure AI Foundry
 2. **Semantic Kernel Plugins**: Building reusable function tools for agents
 3. **Kernel Registration**: Why and how to register plugins to kernels
-4. **Agent Orchestration**: Coordinating multiple agents with GroupChatOrchestration
+4. **Agent Orchestration**: Coordinating multiple agents with different patterns
 5. **ChatCompletionAgent**: Using LLM-based agents for decision making
 6. **Multi-Agent Workflows**: Designing agent collaboration patterns
+7. **Production Architecture**: Structured vs conversational orchestration
+8. **Enterprise Patterns**: Human-in-the-loop, audit trails, and REST APIs
 
 

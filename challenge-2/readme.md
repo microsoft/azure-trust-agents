@@ -147,13 +147,14 @@ To make the fraud detection system accessible as a scalable API service, we'll d
 - **Built-in monitoring**: Integrated with Azure Monitor and Application Insights
 - **Zero infrastructure management**: Focus on application logic while Azure handles the platform
 
-**Deployment Steps:**
-1. Create a Dockerfile for the fraud detection orchestration service
-2. Build and push container image to Azure Container Registry
-3. Configure Container Apps environment with proper networking and secrets
-4. Deploy the API service with environment variables for Cosmos DB, Azure OpenAI, and AI Search
-5. Configure ingress rules for external HTTP/HTTPS access
-6. Set up continuous deployment from your Git repository
-
 The deployed API will expose endpoints for fraud analysis while leveraging the persistent memory system, making it production-ready for real-time fraud detection at enterprise scale. 
 
+
+```curl
+curl -X POST "https://fraud-api-wuo2agocdyhaa.salmongrass-807145cf.swedencentral.azurecontainerapps.io/analyze" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transaction_id": "TX1014",
+    "customer_id": "CUST1014"
+  }'
+```
