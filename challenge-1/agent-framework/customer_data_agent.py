@@ -51,7 +51,6 @@ def get_customer_by_country(
     except Exception as e:
         return [{"error": str(e)}]
 
-# Transaction Data Functions
 def get_transaction(
     transaction_id: Annotated[str, Field(description="The unique transaction identifier (e.g., 'TX1001')")]
 ) -> dict:
