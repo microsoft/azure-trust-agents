@@ -47,7 +47,7 @@
       "name": "[format('{0}-apim-{1}', variables('prefix'), variables('suffix'))]",
       "location": "[parameters('location')]",
       "sku": {
-        "name": "StandardV2",
+        "name": "BasicV2",
         "capacity": 1
       },
       "properties": {
