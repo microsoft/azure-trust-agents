@@ -1,422 +1,362 @@
-# Microsoft Agent Framework Tutorial: Fraud Detection Workflow
+# Microsoft Agent Framework Tutorial: Building Your First Multi-Agent Workflow
 
-This tutorial demonstrates how to use the Microsoft Agent Framework to orchestrate AI agents for fraud detection analysis using pre-existing agents from Azure AI Foundry.
+**Expected Duration:** 45 minutes
 
-## Overview
+Welcome to the exciting world of AI agent orchestration! In this tutorial, you'll learn how to build sophisticated workflows using the Microsoft Agent Framework. By the end of this session, you'll have created a complete fraud detection system that demonstrates real-world agent collaboration patterns.
 
-The Microsoft Agent Framework enables you to create sophisticated workflows by connecting multiple AI agents together. In this fraud detection scenario, we orchestrate two specialized agents:
+If something isn't working as expected, don't hesitate to ask your coach for help!
 
-1. **Customer Data Agent** - Analyzes customer and transaction data
-2. **Risk Analyzer Agent** - Performs fraud risk assessment based on enriched data
+## What You'll Build
 
-## Microsoft Agent Framework Core Components
+You're going to create a powerful fraud detection workflow that combines three specialized AI agents:
 
-### 1. **Executors**
+1. **Customer Data Agent** - Your data detective that retrieves and analyzes customer information
+2. **Risk Analyzer Agent** - Your fraud specialist that assesses transaction risk  
+3. **Compliance Report Agent** - Your audit expert that generates formal compliance reports
 
-Executors are the fundamental building blocks of the framework. They are Python functions decorated with `@executor` that wrap your business logic and AI agent interactions.
+Think of it like an expert team working together - each agent has its specialty, but they communicate seamlessly to solve complex problems that no single agent could handle alone.
+
+## 🚀 Getting Started
+
+### Two Ways to Learn
+
+This tutorial provides two learning paths:
+
+1. **📓 Interactive Notebook**: `sequential_workflow.ipynb` - Perfect for step-by-step learning with rich explanations
+2. **🐍 Python Script**: `working_workflow.py` - Complete implementation ready to run
+
+We recommend starting with the notebook to understand the concepts, then exploring the script for production patterns.
+
+## 🧠 Understanding the Microsoft Agent Framework
+
+Before we build our workflow, let's understand the key concepts that make agent orchestration possible.
+
+### The Magic of Executors
+
+Think of **executors** as specialized workers in your AI factory. Each executor:
+
+- **Focuses on one task** - Like a specialist in your team
+- **Handles its own AI agent** - Each executor manages its specific AI agent
+- **Passes data safely** - Uses structured contracts to share information
+- **Can be reused** - Once built, can be used in multiple workflows
 
 ```python
 @executor
 async def customer_data_executor(
     request: AnalysisRequest,
     ctx: WorkflowContext[CustomerDataResponse]
-) -> CustomerDataResponse:
-    """Customer Data Executor using pre-loaded agent."""
+) -> None:
     # Your business logic here
-    result = await customer_agent.run(request.message)
-    return CustomerDataResponse(...)
+    customer_data = await get_customer_info(request.transaction_id)
+    result = CustomerDataResponse(customer_data=customer_data)
+    await ctx.send_message(result)  # Pass to next executor
 ```
 
-**Key Characteristics:**
-- **Async Functions**: Support asynchronous operations like AI agent calls
-- **Type-Safe**: Input and output types are validated at runtime
-- **Stateless**: Each execution is independent and can be retried
-- **Context Aware**: Receive `WorkflowContext` for framework integration
+### Data Contracts with Pydantic
 
-### 2. **Base Models (Pydantic)**
-
-Base models define the data contracts between executors using Pydantic for validation and serialization.
+Just like a legal contract defines what each party will deliver, **Pydantic models** define exactly what data each executor expects and provides:
 
 ```python
 class AnalysisRequest(BaseModel):
     message: str
-    transaction_id: str = "12345"
+    transaction_id: str = "TX1001"  # Default for testing
 
 class CustomerDataResponse(BaseModel):
     customer_data: str
-    transaction_data: str
     transaction_id: str
     status: str
+    raw_customer: dict = {}  # Extra context for next agent
 ```
 
-**Benefits:**
-- **Data Validation**: Automatic validation of input/output data
-- **Type Safety**: Compile-time and runtime type checking
-- **Serialization**: Automatic JSON serialization for data passing
-- **Documentation**: Self-documenting API contracts
-- **IDE Support**: IntelliSense and auto-completion
+This prevents errors and makes your workflow self-documenting - anyone can see exactly what data flows between agents.
 
-### 3. **Workflow & WorkflowBuilder**
+### The Workflow Assembly Line
 
-The Workflow orchestrates executor execution and manages data flow between them.
+Think of the **WorkflowBuilder** as setting up an assembly line where each station (executor) performs a specific task:
 
 ```python
-# Building a workflow
-builder = WorkflowBuilder()
-builder.set_start_executor(customer_data_executor)
-builder.add_edge(customer_data_executor, risk_analyzer_executor)
-workflow = builder.build()
+# Build your assembly line
+workflow = (
+    WorkflowBuilder()
+    .set_start_executor(customer_data_executor)      # Station 1: Get data
+    .add_edge(customer_data_executor, risk_analyzer_executor)  # Station 2: Analyze risk
+    .add_edge(risk_analyzer_executor, compliance_report_executor)  # Station 3: Generate report
+    .build()
+)
 
-# Executing a workflow
-result = await workflow.run(AnalysisRequest(...))
+# Start the production line
+final_result = await workflow.run_stream(request)
 ```
 
-**Workflow Features:**
-- **Execution Order**: Defines the sequence of executor execution
-- **Data Flow**: Manages data passing between executors
-- **Validation**: Ensures type compatibility between connected executors
-- **Error Handling**: Built-in error propagation and recovery
-- **Monitoring**: Tracks execution progress and performance
+The framework automatically:
+- ✅ Validates that data types match between stations
+- ✅ Handles errors gracefully if something goes wrong
+- ✅ Tracks progress so you can see what's happening
+- ✅ Ensures data flows correctly from one agent to the next
 
-### 4. **Edges**
+## 🏗️ Your Fraud Detection Architecture
 
-Edges define the connections between executors and how data flows through the workflow.
+Here's what you're building - a three-stage pipeline that processes transactions like a real financial institution:
 
+```
+📥 Transaction Request
+    ↓
+🔍 Customer Data Executor (Retrieves data from Cosmos DB)
+    ↓ CustomerDataResponse
+⚠️  Risk Analyzer Executor (AI risk assessment)
+    ↓ RiskAnalysisResponse  
+📋 Compliance Report Executor (Formal audit report)
+    ↓ ComplianceAuditResponse ✅
+```
+
+### Real-World Data Flow
+
+Let's trace through what happens when you analyze transaction `TX1001`:
+
+1. **Customer Data Stage**: 
+   - Pulls Alice Johnson's profile from Cosmos DB
+   - Finds $5,200 transaction to Iran
+   - Identifies risk factors (high-risk country, unusual amount)
+
+2. **Risk Analysis Stage**:
+   - AI agent analyzes the enriched data
+   - Applies regulatory knowledge (sanctions, AML rules)
+   - Recommends "BLOCK" with compliance reasoning
+
+3. **Compliance Report Stage**:
+   - Generates formal audit documentation
+   - Creates actionable recommendations
+   - Flags regulatory filing requirements
+
+## 📚 Learning with the Interactive Notebook
+
+The `sequential_workflow.ipynb` notebook is your hands-on learning environment. It's structured to teach you step-by-step:
+
+### Section 1-3: Setup and Data Access
+- Import the framework and connect to your data
+- Set up Cosmos DB connections
+- Create helper functions for data retrieval
+
+### Section 4: Data Models
+- Define your data contracts using Pydantic
+- Learn why type safety matters in agent workflows
+
+### Section 5-8: Building Your Agents
+- **Customer Data Executor**: Your data retrieval specialist
+- **Risk Analyzer Executor**: Your AI-powered risk assessor  
+- **Compliance Report Executor**: Your audit documentation generator
+
+### Section 9-11: Workflow Orchestration
+- Connect your agents with edges
+- Execute the complete workflow
+- Display comprehensive results
+
+Each section includes detailed explanations and real code you can run immediately.
+
+## 🎯 Key Learning Objectives
+
+By completing this tutorial, you'll master:
+
+### 1. **Agent Communication Patterns**
+- How agents pass structured data between each other
+- The difference between intermediate and terminal executors
+- Using `ctx.send_message()` vs `ctx.yield_output()`
+
+### 2. **Type-Safe Workflows**
+- Creating Pydantic models for bulletproof data contracts
+- Understanding workflow validation and error prevention
+- Building maintainable, self-documenting agent systems
+
+### 3. **Real-World Integration**
+- Connecting to Azure AI Foundry agents
+- Working with live data from Cosmos DB
+- Handling authentication and resource management
+
+### 4. **Production Patterns**
+- Error handling and graceful degradation
+- Logging and monitoring workflow execution
+- Building reusable, composable agent components
+
+## 🚀 Let's Get Started!
+
+### Option 1: Interactive Learning (Recommended)
+
+Open the Jupyter notebook and follow along:
+
+```bash
+# Navigate to the tutorial directory
+cd challenge-1/tutorial
+
+# Open the interactive notebook
+code sequential_workflow.ipynb
+```
+
+Run each cell step by step, reading the explanations and seeing the results in real-time.
+
+### Option 2: Run the Complete Implementation
+
+If you want to see the full workflow in action immediately:
+
+```bash
+# Run the complete implementation
+python working_workflow.py
+```
+
+## Expected Results
+
+When everything works correctly, you'll see output like this:
+
+```
+Audit Report ID: AUDIT_20241013_143022
+Transaction: TX1001
+Status: SUCCESS
+Compliance Rating: NON_COMPLIANT
+Audit Conclusion: HIGH RISK - Immediate review required (AI Enhanced: Based on comprehensive analysis...)
+Risk Factors: ['HIGH_RISK_JURISDICTION', 'UNUSUAL_AMOUNT']
+Compliance Concerns: ['Transaction involves high-risk jurisdiction requiring enhanced monitoring']
+Recommendations: ['Freeze transaction pending investigation', 'Conduct enhanced customer due diligence', 'File suspicious activity report with regulators']
+⚠️  IMMEDIATE ACTION REQUIRED
+📋 REGULATORY FILING REQUIRED
+```
+
+This shows your three-agent workflow successfully:
+- ✅ Retrieved real transaction data (Alice Johnson, $5,200 to Iran)
+- ✅ Performed AI-powered risk analysis 
+- ✅ Generated formal compliance documentation
+- ✅ Provided actionable recommendations
+
+## 🔍 Deep Dive: Understanding the Implementation
+
+### The Three-Agent Architecture
+
+Your workflow creates a sophisticated processing pipeline:
+
+#### 🗃️ Customer Data Executor (Data Specialist)
 ```python
-# Direct edge: output of executor1 becomes input of executor2
-builder.add_edge(executor1, executor2)
+@executor
+async def customer_data_executor(request, ctx) -> None:
+    # Retrieves transaction TX1001 from Cosmos DB
+    transaction_data = get_transaction_data(request.transaction_id)
+    customer_data = get_customer_data(transaction_data.customer_id)
+    
+    # Creates comprehensive analysis with risk indicators
+    analysis = create_fraud_analysis(transaction_data, customer_data)
+    
+    # Passes structured data to next agent
+    await ctx.send_message(CustomerDataResponse(...))
+```
 
-# Conditional edge: execute executor2 only if condition is met
+#### ⚠️ Risk Analyzer Executor (AI Risk Specialist)  
+```python
+@executor
+async def risk_analyzer_executor(customer_response, ctx) -> None:
+    # Uses your Azure AI agent for expert analysis
+    risk_agent = ChatAgent(client, model_id="gpt-4o-mini")
+    
+    # Sends enriched data for AI analysis
+    result = await risk_agent.run(create_risk_prompt(customer_response))
+    
+    # Passes risk assessment to compliance agent
+    await ctx.send_message(RiskAnalysisResponse(...))
+```
+
+#### 📋 Compliance Report Executor (Audit Specialist)
+```python
+@executor  
+async def compliance_report_executor(risk_response, ctx) -> None:
+    # Generates formal audit documentation
+    audit_report = generate_audit_report(risk_response)
+    
+    # Creates actionable recommendations
+    final_report = ComplianceAuditResponse(
+        audit_conclusion="HIGH RISK - Immediate review required",
+        compliance_rating="NON_COMPLIANT",
+        recommendations=["Freeze transaction", "File regulatory report"]
+    )
+    
+    # Final output of the workflow
+    await ctx.yield_output(final_report)
+```
+
+## 🎓 What Makes This Powerful
+
+### Real-World Data Processing
+Your agents work with actual financial data:
+- **Customer profiles** from Alice Johnson, Bob Chen, Carlos Rodriguez
+- **Transaction records** with amounts, destinations, timestamps  
+- **Risk indicators** like account age, device trust scores, fraud history
+
+### AI-Powered Decision Making
+The Risk Analyzer agent applies sophisticated reasoning:
+- **Regulatory knowledge** about sanctions and high-risk countries
+- **Pattern recognition** for unusual transaction behaviors
+- **Compliance expertise** for AML/KYC requirements
+
+### Production-Ready Patterns
+Your implementation demonstrates enterprise practices:
+- **Type safety** prevents data corruption between agents
+- **Error handling** ensures graceful failure recovery
+- **Structured logging** enables debugging and monitoring
+- **Modular design** allows easy agent replacement or enhancement
+
+
+
+## 🚀 Next Steps and Advanced Patterns
+
+Congratulations! You've built a sophisticated multi-agent workflow. Here are some ways to extend your learning:
+
+### 🔄 Add More Agents
+```python
+# Add a notification agent for alerts
+builder.add_edge(compliance_report_executor, notification_executor)
+
+# Add parallel processing for multiple risk models
+builder.add_parallel_edges(customer_data_executor, [
+    risk_analyzer_executor,
+    ml_model_executor,
+    rules_engine_executor
+])
+```
+
+### 🎯 [Conditional Logic](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/edges?pivots=programming-language-python#conditional-edges)
+```python
+# Route based on risk level
 builder.add_conditional_edge(
-    source=executor1, 
-    condition=lambda result: result.status == "SUCCESS",
-    target=executor2
+    risk_analyzer_executor,
+    condition=lambda result: result.recommendation == "BLOCK",
+    target=immediate_alert_executor
 )
-
-# Parallel edges: execute multiple executors simultaneously
-builder.add_parallel_edges(executor1, [executor2, executor3, executor4])
 ```
 
-**Edge Types:**
-- **Sequential**: Data flows from one executor to the next
-- **Conditional**: Execution depends on runtime conditions
-- **Parallel**: Multiple executors run simultaneously
-- **Fan-out/Fan-in**: One-to-many or many-to-one data flows
-
-**Type Compatibility:**
+### 📊 Enhanced Monitoring
 ```python
-# ✅ Compatible: CustomerDataResponse → RiskAnalysisRequest
-customer_executor → risk_analyzer_executor
-
-# ❌ Incompatible: Different types will cause validation errors
-executor_output_string → executor_expects_integer
-```
-
-### 5. **WorkflowContext**
-
-WorkflowContext provides the runtime environment and framework integration for executors.
-
-```python
-@executor
-async def my_executor(
-    request: MyRequest,
-    ctx: WorkflowContext[MyResponse]  # Generic type for output validation
-) -> MyResponse:
-    # Access workflow metadata
-    workflow_id = ctx.workflow_id
-    execution_id = ctx.execution_id
+# Add comprehensive logging
+async def monitored_executor(request, ctx):
+    ctx.logger.info(f"Processing transaction {request.transaction_id}")
+    start_time = time.time()
     
-    # Log information
-    ctx.logger.info("Starting execution")
+    result = await process_transaction(request)
     
-    # Return validated response
-    return MyResponse(...)
+    ctx.logger.info(f"Completed in {time.time() - start_time:.2f}s")
+    await ctx.send_message(result)
 ```
 
-**Context Features:**
-- **Logging**: Structured logging with workflow correlation
-- **Metadata**: Access to workflow and execution identifiers
-- **Type Safety**: Generic typing for output validation
-- **Framework Integration**: Hooks for monitoring and debugging
+## 🎯 Key Takeaways
 
-### 6. **Events**
+✅ **Agent Orchestration**: You can combine multiple AI agents to solve complex problems  
+✅ **Type Safety**: Pydantic models prevent errors and make workflows self-documenting  
+✅ **Real Integration**: Your agents work with live Azure services and data  
+✅ **Production Patterns**: Error handling, logging, and monitoring are built-in  
+✅ **Composability**: Executors can be reused and combined in different workflows
 
-The framework generates events throughout workflow execution for monitoring and debugging.
+## 🎉 Conclusion
 
-```python
-# Common event types returned from workflow.run()
-[
-    ExecutorInvokedEvent(executor_id="customer_data_executor", data=None),
-    ExecutorCompletedEvent(executor_id="customer_data_executor", data=CustomerDataResponse(...)),
-    ExecutorInvokedEvent(executor_id="risk_analyzer_executor", data=CustomerDataResponse(...)),
-    ExecutorCompletedEvent(executor_id="risk_analyzer_executor", data=RiskAnalysisResponse(...))
-]
-```
+You've just built a production-ready, multi-agent fraud detection system using the Microsoft Agent Framework! This workflow demonstrates enterprise patterns that scale to handle real-world complexity.
 
-**Event Types:**
-- **ExecutorInvokedEvent**: Executor started with input data
-- **ExecutorCompletedEvent**: Executor finished with output data
-- **ExecutorFailedEvent**: Executor encountered an error
-- **WorkflowStartedEvent**: Workflow execution began
-- **WorkflowCompletedEvent**: Workflow execution finished
+Your agents can now:
+- 🔍 **Investigate** transactions using multiple data sources
+- 🧠 **Reason** about complex fraud patterns using AI
+- 📋 **Document** findings for regulatory compliance
+- ⚡ **Scale** to process thousands of transactions
 
-**Event Usage:**
-```python
-workflow_result = await workflow.run(request)
-
-# Access final result
-final_event = workflow_result[-1]
-if isinstance(final_event, ExecutorCompletedEvent):
-    final_data = final_event.data
-    print(f"Final result: {final_data}")
-
-# Track execution flow
-for event in workflow_result:
-    print(f"Event: {event.executor_id} - {type(event).__name__}")
-```
-
-## Architecture
-
-```
-AnalysisRequest → [Customer Data Executor] → CustomerDataResponse → [Risk Analyzer Executor] → RiskAnalysisResponse
-                        ↓                            ↓                         ↓
-                 ExecutorInvokedEvent    ExecutorCompletedEvent    ExecutorCompletedEvent
-```
-
-### Data Flow Example
-
-1. **Input**: `AnalysisRequest` enters the workflow
-2. **Edge 1**: Data flows to `customer_data_executor`
-3. **Processing**: Executor calls AI agent and transforms data
-4. **Output**: Returns `CustomerDataResponse`
-5. **Edge 2**: `CustomerDataResponse` flows to `risk_analyzer_executor`
-6. **Processing**: Risk analysis using customer data
-7. **Final Output**: `RiskAnalysisResponse` with fraud assessment
-
-### Type Safety Flow
-
-```python
-# Framework validates this flow automatically:
-AnalysisRequest 
-    → customer_data_executor(AnalysisRequest) → CustomerDataResponse
-    → risk_analyzer_executor(CustomerDataResponse) → RiskAnalysisResponse
-```
-
-If types don't match, you get a clear error:
-```
-TypeCompatibilityError: Source executor outputs CustomerDataResponse 
-but target executor expects AnalysisRequest
-```
-
-## Code Structure
-
-### 1. Data Models
-
-```python
-class AnalysisRequest(BaseModel):
-    message: str
-    transaction_id: str = "12345"
-
-class CustomerDataResponse(BaseModel):
-    customer_data: str
-    transaction_data: str
-    transaction_id: str
-    status: str
-
-class RiskAnalysisResponse(BaseModel):
-    risk_analysis: str
-    risk_score: str
-    transaction_id: str
-    status: str
-```
-
-### 2. Executor Functions
-
-Executors are the core building blocks that wrap your AI agents:
-
-```python
-@executor
-async def customer_data_executor(
-    request: AnalysisRequest,
-    ctx: WorkflowContext[CustomerDataResponse]
-) -> CustomerDataResponse:
-    """Customer Data Executor using pre-loaded agent."""
-    result = await customer_agent.run(request.message)
-    return CustomerDataResponse(
-        customer_data=result.text,
-        transaction_data=f"Transaction data for {request.transaction_id}",
-        transaction_id=request.transaction_id,
-        status="SUCCESS"
-    )
-```
-
-**Key Points:**
-- `@executor` decorator registers the function with the framework
-- `WorkflowContext[T]` provides type safety for output validation
-- Functions are async to support AI agent interactions
-- Return types must match the declared WorkflowContext type
-
-### 3. Agent Loading Pattern
-
-```python
-# Create Azure AI clients bound to specific agent IDs
-customer_client = AzureAIAgentClient(
-    project_endpoint=project_endpoint,
-    model_deployment_name=model_deployment_name,
-    async_credential=credential,
-    agent_id=CUSTOMER_DATA_AGENT_ID  # Pre-existing agent ID
-)
-
-# Use clients as context managers
-async with customer_client as client:
-    # Create ChatAgent wrapper
-    customer_agent = ChatAgent(
-        chat_client=client,
-        model_id=model_deployment_name,
-        store=True
-    )
-```
-
-**Why This Pattern:**
-- `AzureAIAgentClient` connects to existing agents by ID (no creation needed)
-- Context managers ensure proper resource cleanup
-- `ChatAgent` provides the `.run()` interface for agent interaction
-
-### 4. Workflow Construction
-
-```python
-# Build workflow with proper data flow
-builder = WorkflowBuilder()
-builder.set_start_executor(customer_data_executor)
-builder.add_edge(customer_data_executor, risk_analyzer_executor)
-workflow = builder.build()
-
-# Execute workflow
-result = await workflow.run(AnalysisRequest(...))
-```
-
-**Workflow Features:**
-- Type validation ensures output/input compatibility
-- Sequential execution with data passing between executors
-- Built-in error handling and logging
-- Event-driven result tracking
-
-## Environment Setup
-
-Required environment variables:
-
-```bash
-# Azure AI Foundry Configuration
-AI_FOUNDRY_PROJECT_ENDPOINT=https://your-project.cognitiveservices.azure.com/
-MODEL_DEPLOYMENT_NAME=gpt-4o-mini
-
-# Pre-existing Agent IDs (from Azure AI Foundry)
-CUSTOMER_DATA_AGENT_ID=asst_xxxxxxxxxxxxxxxxxxxxxxxx
-RISK_ANALYSER_AGENT_ID=asst_xxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-## Running the Tutorial
-
-```bash
-# Install dependencies
-pip install agent-framework azure-identity python-dotenv
-
-# Run the tutorial
-python tutorial.py
-```
-
-## Expected Output
-
-```
-✅ Connected to DataIngestionAgent (ID: asst_xxx...)
-✅ Connected to RiskAnalyserAgent (ID: asst_xxx...)
-
-🧪 Testing DataIngestionAgent...
-✅ DataIngestionAgent response: [Customer analysis response...]
-
-🧪 Testing RiskAnalyserAgent...
-✅ RiskAnalyserAgent response: [Risk assessment response...]
-
-✅ Workflow built successfully with loaded agents!
-
-🧪 Testing workflow...
-✅ Workflow completed: [ExecutorInvokedEvent(...), ExecutorCompletedEvent(...)]
-
-📊 Final Risk Analysis:
-   Transaction ID: TX1001
-   Risk Score: High Risk
-   Status: SUCCESS
-   Analysis: [Detailed fraud risk assessment...]
-```
-
-## Microsoft Agent Framework Benefits
-
-### 1. **Type Safety**
-- Pydantic models ensure data integrity
-- Compile-time validation of executor connections
-- Clear contracts between workflow stages
-
-### 2. **Scalability**
-- Reusable executor functions
-- Easy to add new agents to existing workflows
-- Parallel execution support (not shown in this example)
-
-### 3. **Enterprise Ready**
-- Built-in logging and monitoring
-- Error handling and recovery
-- Azure integration for authentication and security
-
-### 4. **Agent Reusability**
-- Connect to existing Azure AI Foundry agents
-- No need to recreate or duplicate agent logic
-- Consistent agent behavior across workflows
-
-## Advanced Patterns
-
-### Parallel Execution
-```python
-# Execute multiple agents in parallel
-builder.add_parallel_executors([executor1, executor2, executor3])
-```
-
-### Conditional Logic
-```python
-# Add conditional branching
-builder.add_conditional_edge(source_executor, condition_func, target_executor)
-```
-
-### Error Handling
-```python
-# Custom error handling in executors
-try:
-    result = await agent.run(prompt)
-    return SuccessResponse(...)
-except Exception as e:
-    return ErrorResponse(error=str(e), status="FAILED")
-```
-
-## Best Practices
-
-1. **Use Descriptive Models**: Create specific Pydantic models for each data flow
-2. **Global Agent Storage**: Store agent instances globally for executor access
-3. **Proper Context Management**: Always use `async with` for Azure clients
-4. **Type Annotations**: Include `WorkflowContext[T]` for better validation
-5. **Error Boundaries**: Handle exceptions within executors to maintain workflow stability
-
-## Troubleshooting
-
-### Common Issues
-
-**"Type incompatibility between executors"**
-- Ensure output type of source executor matches input type of target executor
-- Check Pydantic model definitions
-
-**"'AzureAIAgentClient' object has no attribute 'run'"**
-- Use `ChatAgent` wrapper around the client
-- Don't call `.run()` directly on `AzureAIAgentClient`
-
-**"Agent ID not found"**
-- Verify agent IDs exist in Azure AI Foundry
-- Check environment variable names and values
-
-This tutorial demonstrates the power of the Microsoft Agent Framework for creating robust, type-safe, and scalable AI agent workflows while leveraging existing Azure AI Foundry agents.
+Ready for the next challenge? Let's see what other amazing agent workflows you can build!
