@@ -176,11 +176,14 @@ if [ -n "$apiManagementName" ]; then
     echo "Getting API Management credentials..."
     apimGatewayUrl=$(az apim show --name $apiManagementName --resource-group $resourceGroupName --query gatewayUrl -o tsv 2>/dev/null || echo "")
     # Get subscription keys (primary key from default subscription)
-    apimSubscriptionKey=$(az apim subscription list --service-name $apiManagementName --resource-group $resourceGroupName --query "[?name=='master'].primaryKey | [0]" -o tsv 2>/dev/null || echo "")
-    if [ -z "$apimSubscriptionKey" ]; then
-        # Fallback: try to get any subscription key
-        apimSubscriptionKey=$(az apim subscription list --service-name $apiManagementName --resource-group $resourceGroupName --query "[0].primaryKey" -o tsv 2>/dev/null || echo "")
-    fi
+    TOKEN=$(az account get-access-token --resource https://management.azure.com --query accessToken -o tsv)
+    SUB=$(az account show --query id --output tsv)
+    apimSubscriptionKey=$(curl -X POST \
+        -H "Authorization: Bearer $TOKEN" \
+        -d "" \
+        "https://management.azure.com/subscriptions/$SUB/resourceGroups/$resourceGroupName/providers/Microsoft.ApiManagement/service/$apiManagementName/subscriptions/master/listSecrets?api-version=2024-05-01" \
+        | jq '.primaryKey' | sed 's/"//g' 2>/dev/null || echo "")
+
 else
     echo "Warning: API Management not found"
     apimGatewayUrl=""
