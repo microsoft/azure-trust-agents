@@ -173,7 +173,7 @@
         "configuration": {
           "ingress": {
             "external": true,
-            "targetPort": 80,
+            "targetPort": 8080,
             "allowInsecure": false,
             "traffic": [
               {
@@ -181,47 +181,18 @@
                 "latestRevision": true
               }
             ]
-          },
-          "registries": [
-            {
-              "server": "[format('{0}.azurecr.io', variables('containerRegistryName'))]",
-              "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('containerRegistryName')), '2023-07-01').username]",
-              "passwordSecretRef": "registry-password"
-            }
-          ],
-          "secrets": [
-            {
-              "name": "registry-password",
-              "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('containerRegistryName')), '2023-07-01').passwords[0].value]"
-            }
-          ]
+          }
         },
         "template": {
           "containers": [
             {
               "name": "main",
-              "image": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+              "image": "ghcr.io/dsanchor/fraud-alert-management-api:latest",
               "resources": {
-                "cpu": 0.25,
-                "memory": "0.5Gi"
+                "cpu": 0.5,
+                "memory": "1Gi"
               },
               "env": [
-                {
-                  "name": "COSMOS_DB_ENDPOINT",
-                  "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName')), '2023-04-15').documentEndpoint]"
-                },
-                {
-                  "name": "AI_FOUNDRY_ENDPOINT",
-                  "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName')), '2025-04-01-preview').endpoint]"
-                },
-                {
-                  "name": "SEARCH_SERVICE_ENDPOINT",
-                  "value": "[format('https://{0}.search.windows.net/', variables('searchServiceName'))]"
-                },
-                {
-                  "name": "CONTENT_SAFETY_ENDPOINT",
-                  "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('contentSafetyName')), '2023-05-01').endpoint]"
-                }
               ]
             }
           ],
