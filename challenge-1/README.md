@@ -32,6 +32,7 @@ First, we'll create three specialized agents that will work together in our frau
 
 ```bash
 cd agents
+pip3 azure-identity agent-framework
 python customer_data_agent.py && python risk_analyser_agent.py && python compliance_report_agent.py
 ```
 
