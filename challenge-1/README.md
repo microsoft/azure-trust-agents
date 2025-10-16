@@ -123,6 +123,7 @@ python compliance_report_agent.py
 #### **Run All Agents Together**:
 ```bash
 cd agents
+pip3 azure-identity agent-framework
 python customer_data_agent.py && python risk_analyser_agent.py && python compliance_report_agent.py
 ```
 
