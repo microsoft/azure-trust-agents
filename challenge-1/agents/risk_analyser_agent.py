@@ -36,6 +36,7 @@ async def main():
             
             agent = client.create_agent(
                 name="RiskAnalyserAgent",
+                store=True,  # Make agent persistent in Azure AI Foundry
                 instructions="""You are a Risk Analyser Agent evaluating financial transactions for potential fraud.
                 Given a normalized transaction and customer profile, your task is to:
                 - Apply fraud detection logic using rule-based checks and regulatory compliance data

@@ -2,7 +2,11 @@
 
 **Duration:** 60 minutes
 
-In this first challenge, we will start creating our Azure AI Agents that support our use case for today. Then, we will check their creation on the Portal for reusability. Our third step, will focus on creating a [Sequential Orchestration](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/sequential?pivots=programming-language-python) between our three agents previously created. The orchestration will follow this architecture:
+In this challenge, we will build a complete fraud detection system by creating three specialized Azure AI Agents and orchestrating them into a seamless workflow. We'll develop a **Customer Data Agent** for transaction retrieval, a **Risk Analyzer Agent** for compliance assessment, and a **Compliance Report Agent** for audit documentation. Finally, we'll connect these agents by creating a Microsoft's Agent Framework [Workflow](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/sequential?pivots=programming-language-python), allowing us to create an enterprise-grade fraud detection pipeline.
+
+This comprehensive guide covers **step-by-step agent creation** with detailed instructions for building each specialized agent, explores the **hybrid approach** that balances rule-based regulatory compliance with AI-powered pattern recognition, demonstrates **sequential workflow orchestration** to connect agents into a cohesive pipeline, provides **complete examples** of what each agent produces in the fraud detection process, and offers **enterprise integration guidance** for extending the system with Model Context Protocol (MCP) for real-world deployment.
+
+The orchestration will follow this architecture:
 
 ```
 TX Input → [Customer Data Agent] → [Risk Analyzer Agent] → [Compliance Report Agent] → Audit Report
@@ -17,25 +21,130 @@ The new Microsoft Agent Framework, released in October 2025, is an open-source S
 
 ![alt text](image.png)
 
-Besides the typical capabilities, new main features include:
+Besides the capabilities on previous Frameworks, new main features include:
 - Built-in enterprise capabilities: observability via OpenTelemetry, security and identity through Microsoft Entra integration, compliance hooks, and support for long-running, durable agents.​
 - Human-in-the-loop workflows, checkpointing, and request/response management for safe, reliable operations.​
 - Integration with a wide range of APIs, platforms (Azure AI Foundry, Microsoft 365, Copilot), and enterprise systems.​
 - Support for open standards: **Model Context Protocol (MCP)**, **Agent-to-Agent (A2A) communication**, and OpenAPI integration ensure interoperability and portability.​
 - Modular architecture with pluggable connectors, agent memory, and extensible components for developers to customize.​
 
+For a more detailed integration, these are the set of core concepts that complete the full Agentic spectrum with MAF:
+
+- [**Executors**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/executors?pivots=programming-language-csharp): Executors are processing units that handle specific message types, perform logic, and emit outputs or send messages to other components in a workflow.
+- [**Edges**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/edges?pivots=programming-language-csharp): Edges define how messages move between executors, enabling conditional routing, branching, fan-in, and fan-out message flows.
+- [**Workflows:**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/workflows?pivots=programming-language-csharp) A workflow is the orchestrated graph of executors and edges that manages message routing, execution order, and lifecycle during processing.
+- [**Events:**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/events?pivots=programming-language-csharp) Events provide real-time observability into workflow execution by emitting structured signals about workflow, executor, and message processing states.
+
+
 ## Step-by-Step Instructions
 
 ### Step 1: Create Individual Agents
 
-First, we'll create three specialized agents that will work together in our fraud detection pipeline. Each agent has distinct capabilities: the **Customer Data Agent** connects to Cosmos DB to fetch transaction and customer information, the **Risk Analyzer Agent** uses Azure AI Search to evaluate fraud risk against regulatory policies, and the **Compliance Report Agent** generates formal audit reports and compliance documentation. Running these scripts will register each agent with Azure AI Foundry and provide you with unique agent IDs needed for orchestration.
+First, we'll create three specialized agents that will work together in our fraud detection pipeline. Each agent has distinct capabilities and specific functions:
 
+#### **Customer Data Agent** 🗂️
+**Purpose**: Connects to Cosmos DB to fetch transaction and customer information, providing comprehensive data ingestion and normalization services.
+
+**Core Functions**:
+- **`get_customer_data(customer_id)`**: Retrieves complete customer profiles including name, country, account age, device trust score, and fraud history from Cosmos DB
+- **`get_customer_transactions(customer_id)`**: Fetches all transactions for a specific customer from Cosmos DB for pattern analysis
+
+**Key Capabilities**:
+- Direct Cosmos DB integration for real-time data access
+- Data normalization (currency, timestamps, amounts)
+- Transaction enrichment with customer metadata
+- Pattern detection for suspicious transaction sequences
+- Clean JSON output with unified structure for downstream analysis
+- Cross-partition querying for comprehensive data retrieval
+
+**To run individually**:
+```bash
+cd agents
+python customer_data_agent.py
+```
+
+#### **Risk Analyzer Agent** 🔍
+**Purpose**: Uses Azure AI Search to evaluate fraud risk against regulatory policies, applying sophisticated risk scoring algorithms.
+
+**Core Functions**:
+- **Azure AI Search Integration**: Uses HostedFileSearchTool to search through regulations and compliance policies database (index: "regulations-policies")
+- **Risk Scoring Engine**: Assigns fraud risk scores from 0-100 based on multiple factors
+- **Regulatory Compliance Checking**: Validates transactions against KYC, CIP, and EDD requirements
+- **Pattern Analysis**: Detects suspicious patterns using predefined risk thresholds
+
+**Risk Assessment Criteria**:
+- **High-risk countries**: Nigeria (NG), Iran (IR), Russia (RU), North Korea (KP)
+- **Amount thresholds**: Transactions over $10,000 USD trigger additional scrutiny
+- **Account age**: New accounts (< 30 days) receive higher risk scores
+- **Device trust**: Low device trust scores (< 0.5) indicate potential fraud
+
+**Key Capabilities**:
+- Real-time regulatory database queries using Azure AI Search
+- Multi-factor risk assessment combining geographical, behavioral, and regulatory factors
+- Explainable AI reasoning with references to specific regulations found via search
+- Integration with sanctions lists and compliance frameworks
+
+**To run individually**:
+```bash
+cd agents
+python risk_analyser_agent.py
+```
+
+#### **Compliance Report Agent** 📊
+**Purpose**: Generates formal audit reports and compliance documentation, translating risk findings into actionable business intelligence.
+
+**Core Functions**:
+- **`parse_risk_analysis_result(risk_analysis_text)`**: Extracts structured data from Risk Analyzer output including scores, levels, and risk factors
+- **`generate_audit_report_from_risk_analysis(risk_analysis_text, report_type)`**: Creates comprehensive audit reports with:
+  - Executive summaries with risk scores and compliance ratings
+  - Detailed findings with specific risk factors identified
+  - Regulatory implications and required actions
+  - Compliance status indicators (COMPLIANT/NON_COMPLIANT/CONDITIONAL_COMPLIANCE)
+- **`generate_executive_audit_summary(multiple_risk_analyses, summary_period)`**: Produces executive-level dashboards aggregating multiple transaction analyses
+
+**Report Components**:
+- **Audit Trail**: Complete documentation with timestamps, data sources, and analysis methods
+- **Risk Distribution**: Statistical breakdown of high/medium/low risk transactions
+- **Compliance Dashboard**: Real-time metrics for regulatory filings, monitoring requirements, and immediate actions
+- **Actionable Recommendations**: Specific steps for transaction freezing, enhanced due diligence, and regulatory reporting
+
+**Key Capabilities**:
+- Automated compliance rating assignment based on risk scores
+- SAR (Suspicious Activity Report) filing recommendations
+- Executive dashboard generation for management oversight
+- Audit trail documentation for regulatory compliance
+
+**To run individually**:
+```bash
+cd agents
+python compliance_report_agent.py
+```
+
+#### **Run All Agents Together**:
 ```bash
 cd agents
 python customer_data_agent.py && python risk_analyser_agent.py && python compliance_report_agent.py
 ```
 
-### Step 2: Add Agent IDs to Environment
+**Agent Registration**: Running these scripts will register each agent with Azure AI Foundry and provide you with unique agent IDs needed for orchestration. Each agent becomes a reusable component that can be invoked independently or as part of the sequential workflow.
+
+## Rule-Based vs AI-Based Decision Making 🎯
+
+This fraud detection pipeline demonstrates a sophisticated hybrid approach combining **rule-based logic** with **AI-powered intelligence** across the three specialized agents:
+
+**Rule-Based Components** provide deterministic, auditable decisions essential for regulatory compliance:
+- **Risk Analyzer Agent** implements hardcoded risk thresholds (transactions >$10,000, high-risk countries like Iran/Russia, account age <30 days, device trust <0.5) ensuring consistent, explainable decisions that meet regulatory requirements
+- **Customer Data Agent** applies structured data validation and normalization rules, ensuring data quality and consistency across all transaction processing
+- **Compliance Report Agent** uses predefined compliance rating logic (risk scores 80+ = NON_COMPLIANT, 50-79 = CONDITIONAL_COMPLIANCE) providing transparent audit trails
+
+**AI-Powered Intelligence** adds sophisticated pattern recognition and contextual analysis:
+- **Natural Language Processing** enables agents to interpret complex regulatory documents through Azure AI Search, dynamically adapting to evolving compliance requirements
+- **Contextual Risk Assessment** allows the Risk Analyzer to weigh multiple factors intelligently, considering customer history, transaction patterns, and regulatory context beyond simple threshold checks
+- **Dynamic Report Generation** empowers the Compliance Agent to create nuanced audit narratives, translating technical risk data into executive-ready business intelligence
+
+This **hybrid architecture** ensures both regulatory compliance through transparent rule-based decisions and sophisticated fraud detection through AI-powered pattern recognition, creating an enterprise-grade solution that balances auditability with advanced threat detection capabilities.
+
+## Step 2: Add Agent IDs to Environment
 
 After successfully creating the agents, each script will output a unique agent ID that Azure AI Foundry uses to identify and connect to your agents. These IDs are essential for the Sequential Builder pattern to work properly, as they allow the orchestration system to bind to your existing agents and reuse their specialized capabilities.
 
@@ -51,37 +160,92 @@ After successfully creating the agents, each script will output a unique agent I
    COMPLIANCE_REPORT_AGENT_ID=asst_XXXXXXXXXXXXXXXXXXXXXXXX
    ```
 
-### Step 3: Run Complete Sequential Orchestration
+## Step 3: Interactive Jupyter Notebook Workflow
 
-Now comes the exciting part - executing the complete fraud detection pipeline using Microsoft's Agent Framework Sequential Builder pattern. This step demonstrates enterprise-grade multi-agent orchestration where each agent automatically receives the output from the previous agent in the chain. The workflow will analyze a sample transaction (TX1001) by first gathering customer data, then performing risk analysis, and finally generating a comprehensive compliance audit report with regulatory recommendations.
+Now comes the exciting part - executing the complete fraud detection pipeline using Microsoft's Agent Framework Sequential Builder pattern through an interactive Jupyter notebook. This step demonstrates enterprise-grade multi-agent orchestration where each agent automatically receives the output from the previous agent in the chain. The workflow will analyze a sample transaction (TX2002) through three sequential stages: data retrieval from Cosmos DB, AI-powered risk analysis, and comprehensive compliance audit reporting.
 
 ```bash
-cd challenge-1/orchestration
-python orchestration.py
+cd challenge-1/workflow
+# Open the Jupyter notebook
+jupyter notebook sequential_workflow.ipynb
 ```
 
+Alternatively, you can open the notebook directly in VS Code for a seamless experience.
+
+## Notebook Walkthrough
+
+The **`sequential_workflow.ipynb`** provides a comprehensive, step-by-step guide through building and executing a three-agent fraud detection workflow using the Microsoft Agent Framework. Here's what each section covers:
+
+### **Section 1-3: Environment Setup** 🔧
+- **Dependencies**: Import Agent Framework, Azure AI clients, Cosmos DB integration, and Pydantic models
+- **Database Connection**: Configure Cosmos DB client to connect to `FinancialComplianceDB` with `Customers` and `Transactions` containers
+- **Helper Functions**: Define `get_transaction_data()`, `get_customer_data()`, and `get_customer_transactions()` for database queries
+
+### **Section 4: Data Models** 📊
+Define type-safe Pydantic models for workflow data contracts:
+- **`AnalysisRequest`**: Input data structure with transaction ID and analysis request
+- **`CustomerDataResponse`**: Output from customer data executor with transaction analysis
+- **`RiskAnalysisResponse`**: Output from risk analyzer with AI-powered assessment
+- **`ComplianceAuditResponse`**: Final audit report with compliance ratings and recommendations
+
+### **Section 5: Customer Data Executor** 🗂️
+**First stage executor** that:
+- Queries Cosmos DB for real transaction and customer data
+- Performs comprehensive fraud risk analysis including high amounts, risky countries, account age, and device trust
+- Creates structured analysis text with clear risk indicators
+- Uses `await ctx.send_message(result)` to pass data to the next executor in the chain
+
+### **Section 6: Risk Analyzer Executor** 🔍
+**Second stage executor** that:
+- Receives customer data analysis from the previous executor
+- Connects to your Azure AI Risk Analyzer Agent using the `RISK_ANALYSER_AGENT_ID`
+- Sends structured prompts for regulatory compliance assessment including AML/KYC evaluation
+- Parses AI responses to extract recommendations and compliance notes
+- Uses `await ctx.send_message(result)` to pass enhanced analysis to compliance reporting
+
+### **Section 7-8: Compliance Report Functions & Executor** 📊
+**Final stage executor** featuring:
+- **Helper Functions**: `parse_risk_analysis_result()` and `generate_audit_report_from_risk_analysis()` for structured audit documentation
+- **AI Integration**: Optionally connects to compliance report agent using `COMPLIANCE_REPORT_AGENT_ID`
+- **Audit Generation**: Creates formal compliance reports with risk ratings, regulatory implications, and actionable recommendations
+- **Terminal Output**: Uses `await ctx.yield_output(result)` to provide final workflow results
+
+### **Section 9-10: Workflow Orchestration** ⚙️
+**Complete workflow construction**:
+- **Sequential Builder**: Uses `WorkflowBuilder` to connect three executors with proper edge definitions
+- **Stream Execution**: `workflow.run_stream()` provides real-time event monitoring
+- **Result Processing**: Captures `WorkflowOutputEvent` for final compliance audit results
+- **Comprehensive Display**: Shows audit report ID, compliance ratings, risk factors, and required actions
+
+### **Section 11: Interactive Execution** ▶️
+**Run the complete workflow** by executing the final cell which:
+- Analyzes transaction TX2002 from Cosmos DB
+- Processes data through all three AI agents sequentially  
+- Generates comprehensive audit documentation
+
 **Expected Output:**
-When you run the complete workflow, you'll witness a sophisticated multi-agent fraud detection system in action. Here's what each agent produces:
+When you run the notebook, you'll see a sophisticated three-stage fraud detection system:
 
-**Customer Data Agent Output:**
-- **Customer Profile Analysis**: Complete customer details including Maria Gonzalez (CUST1005) from Spain with 365-day account age and 0.8 device trust score
-- **Transaction History**: Structured JSON data showing multiple high-value transactions (€9,997-€9,999) to various European countries within hours
-- **Risk Pattern Detection**: Identifies suspicious patterns like rapid succession of large amounts close to €10,000 threshold
-- **Data Normalization**: Converts all transaction data into unified format with timestamps, currencies, and destination analysis
+**Stage 1 - Customer Data Analysis:**
+- Real transaction data retrieval from Cosmos DB (TX2002)
+- Customer profile analysis with account age, device trust, and fraud history
+- Risk indicator assessment (high amounts, risky destinations, new accounts)
+- Structured data preparation for AI analysis
 
-**Risk Analyzer Agent Output:**
-- **Regulatory Compliance Analysis**: KYC regulations assessment including Customer Identification Program (CIP) and Enhanced Due Diligence (EDD) requirements
-- **Risk-Based Approach**: Tailored scrutiny based on customer risk profiles and transaction patterns
-- **Ongoing Monitoring Framework**: Continuous transaction monitoring for suspicious activity detection
+**Stage 2 - AI Risk Assessment:**
+- Azure AI agent regulatory compliance evaluation
+- KYC/AML policy assessment using your risk analyzer agent
+- Dynamic risk scoring based on multiple factors
+- Sanctions checking and compliance recommendations
 
-**Compliance Report Agent Output:**
-- **Comprehensive Audit Report**: Formal report with unique ID (e.g., AUDIT_20251012_004901) and timestamp
-- **Executive Summary**: Risk score 85/100, HIGH risk level, immediate review required for transactions involving high-risk jurisdictions
-- **Detailed Findings**: Specific risk factors including sanctions concerns, unusual transaction amounts, and customer history flags
-- **Actionable Recommendations**: Step-by-step compliance actions including transaction freezing, enhanced due diligence, and Suspicious Activity Report (SAR) filing
-- **Regulatory Documentation**: Complete audit trail with compliance ratings (NON_COMPLIANT) and regulatory filing requirements
+**Stage 3 - Compliance Audit Reporting:**
+- Formal audit report generation with unique ID
+- Executive summary with risk scores and compliance ratings
+- Detailed findings including specific risk factors and concerns
+- Actionable recommendations for transaction handling
+- Regulatory filing requirements and immediate action flags
 
-This demonstrates enterprise-grade fraud detection with real transaction analysis, regulatory compliance checks, and audit-ready documentation suitable for financial institutions.
+This interactive notebook demonstrates enterprise-grade fraud detection with real transaction analysis, AI-powered risk assessment, and audit-ready compliance documentation suitable for financial institutions.
 
 ## Conclusion 🎉
 
