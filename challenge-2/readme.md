@@ -2,9 +2,9 @@
 
 **Expected Duration:** 60 minutes
 
-This challenge focuses on integrating a fraud alert manager API as  Model Context Protocol (MCP) server using Azure API Management. This MCP server will then be connected to an agent within the Agent Framework, enabling the agent to leverage fraud alert capabilities.
+This challenge focuses on integrating a Fraud Alert Manager API as  Model Context Protocol (MCP) server using Azure API Management. This MCP server will then be connected to an agent, enabling the agent to leverage fraud alert capabilities.
 
-We will not implement the fraud detection logic itself, but rather we will leverage Azure API Management to expose a pre-built fraud detection API as MCP server. Sounds cool, right? No need to write new code, just configure and connect!
+We will not implement the fraud alerting logic itself, but rather we will leverage Azure API Management to expose a pre-built fraud detection API as MCP server. Sounds cool, right? No need to write new code, just configure and connect!
 
 ## What is MCP?
 
