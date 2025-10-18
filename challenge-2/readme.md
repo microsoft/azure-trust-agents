@@ -1,272 +1,176 @@
-# Challenge 2: MCP Server Integration and Container Apps Deployment
+# Challenge 2: MCP Server Integration in Agent Framework
 
 **Expected Duration:** 60 minutes
 
-This challenge focuses on two key integration points to enhance your fraud detection system with modern connectivity and deployment patterns.
+This challenge focuses on integrating a fraud alert manager API as  Model Context Protocol (MCP) server using Azure API Management. This MCP server will then be connected to an agent within the Agent Framework, enabling the agent to leverage fraud alert capabilities.
 
-## Part 1 - Connect to your Alert MCP Server
+We will not implement the fraud detection logic itself, but rather we will leverage Azure API Management to expose a pre-built fraud detection API as MCP server. Sounds cool, right? No need to write new code, just configure and connect!
 
-### Step-by-Step: Connecting to Alert MCP
+## What is MCP?
 
-Now that your fraud detection API is deployed on Azure Container Apps, you can integrate it with the **Model Context Protocol (MCP)** to create a more sophisticated alerting and monitoring system.
+The Model Context Protocol (MCP) is a standardized way for AI models and systems to communicate context and metadata about their operations. It allows different components of an AI ecosystem to share information seamlessly, enabling better coordination and integration.
 
-#### What is MCP?
-The Model Context Protocol enables seamless integration between your fraud detection system and external tools, allowing for:
+The Model Context Protocol enables, in this case, leverage fraud alert systems to be integrated with other agents, enhancing their capabilities and responsiveness:
+
 - **Real-time alerts**: Immediate notifications when fraud patterns are detected
 - **Context sharing**: Rich information exchange between systems
 - **Tool orchestration**: Coordinated responses across multiple platforms
 
-#### Implementation Steps
 
-**Step 1: Configure Alert MCP Connection**
+## Part 1 - Expose your API as MCP Server with API Management
+
+### Understand the Fraud Alert Manager API
+
+The Fraud Alert Manager API is a pre-built service that simulates fraud alerting functionalities. It provides endpoints to create, retrieve, and manage fraud alerts. This service is hosted on Azure Container Apps and has been pre-configured and deployedfor this challenge.
+
+Before we start, familiarize yourself with the API documentation provided by the Swagger UI at your Container Apps URL:
+
+```
+RG=<your_resource_group_name>
+CONTAINER_APP=$(az containerapp list --resource-group $RG --query "[0].name" -o tsv)
+CONTAINER_APP_URL=$(az containerapp show --name $CONTAINER_APP --resource-group $RG --query properties.configuration.ingress.fqdn -o tsv)
+echo "Swagger UI URL: http://$CONTAINER_APP_URL/v1/swagger-ui/index.html"
+```
+
+### Onboard you API to Azure API Management
+
+1. **Import the Fraud Alert Manager API**:
+   - Navigate to your API Management instance in the Azure portal.
+   - Go to the "APIs" section and select "Add API".
+   - Choose "OpenAPI"
+   ![Onboard API](images/1_onboardapi.png)
+   - Provide the URL to the Swagger JSON of the Fraud Alert Manager API, which can be found at:
+   ```bash
+   echo http://$CONTAINER_APP_URL/v1/v3/api-docs
+   ```
+   ![Import API](images/2_createapi.png)
+   - Click "Create".
+
+2. **Modify settings and validate the API has been imported successfully**:
+   - Modify backend endpoint to point to the Fraud Alert Manager API.
+   ```bash
+   echo http://$CONTAINER_APP_URL/v1
+   ```
+   ![Modify Backend](images/3_modifybackend.png)
+   ![Override endpoint](images/4_overridebackend.png)
+   - Test API operations in the Azure portal to ensure everything is working correctly. For instance, get all alerts as shown in the video:
+   ![Test API](images/5_testapi.gif)
+
+### Create MCP Server from your API
+
+I will go straight to how to create an MCP server from your API. I encourage you to explore more about this in the [official doc](https://learn.microsoft.com/en-us/azure/api-management/export-rest-mcp-server).
+
+1. **Navigate to the MCP Servers section**:
+   - Under "APIs", click on "MCP Servers (Preview)".
+   - Click "Create MCP Server" and "Expose an API as MCP Server"
+   ![Create MCP Server](images/6_mcpfromapi.png)
+
+2. **Select the API and operations to expose**:
+   - Select API, operations and provide details as shown below:
+    ![Select API](images/7_createmcp.png)
+   - Click "Create".
+
+Finally, save the "MCP Server URL" of the newly created MCP server, you will need it in the next part. Add a new entry with the value in the '.env' file:
+```bash
+MCP_SERVER_ENDPOINT=<MCP_SERVER_URL>
+```
+
+## Part 2 - Connect an Agent to your Alert MCP Server
+
+First, have a look at the Agent Framework documentation on how to use [MCP servers](https://learn.microsoft.com/en-us/agent-framework/user-guide/model-context-protocol/using-mcp-tools?pivots=programming-language-python)
+
+### Option 1: Use the MCP server from a ChatAgent (Agent Framework)
+
+### Define the MCP as a Tool in the Agent
+
+Now, it is time to configure a simple ChatAgent that uses the MCP server. 
+
+The agent has been implemented for you in the `challenge-2/agents/fraud_alert_agent.py` file.
+
+We have left a placeholder in the code so you can add the MCP server as a tool. In line 99, find:
+
 ```python
-# Add to your orchestration.py
-import json
-from mcp_client import MCPClient
-
-class AlertMCPConnector:
-    def __init__(self, mcp_endpoint):
-        self.client = MCPClient(mcp_endpoint)
-        
-    async def send_fraud_alert(self, analysis_result):
-        alert_payload = {
-            "alert_type": "fraud_detection",
-            "severity": analysis_result.get("risk_level", "MEDIUM"),
-            "customer_id": analysis_result.get("customer_id"),
-            "transaction_id": analysis_result.get("transaction_id"),
-            "fraud_score": analysis_result.get("fraud_score"),
-            "reasoning": analysis_result.get("final_decision", {}).get("reasoning"),
-            "timestamp": analysis_result.get("timestamp")
-        }
-        
-        return await self.client.send_notification(alert_payload)
+            tools= < PLACEHOLDER FOR MCP TOOLS >
 ```
 
-**Step 2: Integrate with Existing Orchestrator**
+Replace it by:
+
 ```python
-# In your main orchestration function
-async def enhanced_fraud_analysis(transaction_id, customer_id):
-    # Your existing analysis code...
-    analysis_result = await orchestrate_fraud_analysis(transaction_id, customer_id)
-    
-    # Add MCP Alert integration
-    if analysis_result["final_decision"]["risk_level"] in ["HIGH", "CRITICAL"]:
-        alert_connector = AlertMCPConnector(os.getenv("ALERT_MCP_ENDPOINT"))
-        await alert_connector.send_fraud_alert(analysis_result)
-    
-    return analysis_result
-```
-
-**Step 3: Environment Configuration**
-Add to your `.env` file:
-```env
-ALERT_MCP_ENDPOINT=https://your-alert-mcp-server.com/api/v1
-MCP_API_KEY=your_mcp_api_key
-```
-
-## Part 2 - Container App + OpenAPI + MCP Server Exposure
-
-### Transforming Your API into an MCP Server
-
-This section shows how to expose your Azure Container Apps deployment as a full-featured MCP server with OpenAPI documentation.
-
-#### MCP Server Architecture
-
-**Enhanced API Structure:**
-```
-Container App Deployment
-├── Fraud Detection API (existing)
-├── OpenAPI Specification 
-├── MCP Server Interface
-└── GitHub Copilot Integration
-```
-
-#### Implementation Guide
-
-**Step 1: Add OpenAPI Specification**
-Create `openapi_spec.py`:
-```python
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-
-app = FastAPI(
-    title="Fraud Detection MCP Server",
-    description="Intelligent fraud detection with persistent memory and MCP integration",
-    version="2.0.0"
-)
-
-class FraudAnalysisRequest(BaseModel):
-    transaction_id: str
-    customer_id: str
-    context: Optional[Dict[str, Any]] = None
-
-class MCPAlert(BaseModel):
-    alert_type: str
-    severity: str
-    payload: Dict[str, Any]
-    destination: Optional[str] = None
-
-@app.post("/mcp/analyze", tags=["MCP Operations"])
-async def mcp_fraud_analysis(request: FraudAnalysisRequest):
-    """
-    Enhanced fraud analysis with MCP context and alerting
-    """
-    # Your enhanced analysis logic here
-    pass
-
-@app.post("/mcp/alert", tags=["MCP Operations"])
-async def send_mcp_alert(alert: MCPAlert):
-    """
-    Send alerts through MCP protocol
-    """
-    # Alert logic here
-    pass
-```
-
-**Step 2: MCP Server Implementation**
-Create `mcp_server.py`:
-```python
-import asyncio
-from mcp import Server, types
-from orchestration import enhanced_fraud_analysis
-
-server = Server("fraud-detection-mcp")
-
-@server.call_tool()
-async def analyze_fraud(transaction_id: str, customer_id: str) -> types.TextContent:
-    """Analyze transaction for fraud using persistent memory"""
-    result = await enhanced_fraud_analysis(transaction_id, customer_id)
-    
-    return types.TextContent(
-        type="text",
-        text=f"Fraud Analysis Complete:\n"
-             f"Risk Level: {result['final_decision']['risk_level']}\n"
-             f"Fraud Score: {result.get('fraud_score', 'N/A')}\n"
-             f"Reasoning: {result['final_decision']['reasoning']}"
-    )
-
-@server.list_tools()
-async def list_tools() -> list[types.Tool]:
-    return [
-        types.Tool(
-            name="analyze_fraud",
-            description="Analyze transactions for fraud with memory-enhanced detection",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "transaction_id": {"type": "string"},
-                    "customer_id": {"type": "string"}
+            tools=MCPStreamableHTTPTool(
+                name="Fraud alert manager MCP",
+                url=mcp_endpoint,
+                load_prompts=False,
+                headers={
+                    "Ocp-Apim-Subscription-Key": mcp_subscription_key
                 },
-                "required": ["transaction_id", "customer_id"]
-            }
-        )
-    ]
+            ),
 ```
 
-**Step 3: Docker Configuration Update**
-Update your `Dockerfile`:
-```dockerfile
-FROM python:3.11-slim
+A few things here: 
+- The kind of tool is (MCPStreamableHTTPTool)(https://learn.microsoft.com/en-us/agent-framework/user-guide/model-context-protocol/using-mcp-tools?pivots=programming-language-python#mcpstreamablehttptool)
+- load_prompts is set to False because API Management exposed MCP server does not serve prompts.
+- The subscription key header is required to authenticate against the API Management instance. Good stuff if you want to control access to your MCP server!
 
-WORKDIR /app
+### Run the Agent
 
-# Copy requirements
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+To validate that the final Fraud Alert API is receiving requests from the agent, you can monitor the logs of the Container App hosting the Fraud Alert Manager API. In the terminal, run:
 
-# Copy application files
-COPY . .
-
-# Expose ports for both API and MCP server
-EXPOSE 8000 8080
-
-# Start both services
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] & \
-    ["python", "mcp_server.py", "--port", "8080"]
+```bash
+az containerapp logs show --name $CONTAINER_APP --resource-group $RG --follow
 ```
 
-### GitHub Copilot Integration Hints
+Now, run the agent in another terminal:
 
-#### Where to Add MCP Server in Your Orchestration
+```bash
+cd agents
+python fraud_alert_agent.py
+```
 
-**🎯 Integration Points in `orchestration.py`:**
+See output on both terminals. You should see the agent sending requests to the Fraud Alert Manager API and receiving responses.
 
-1. **At the top of your file** (imports section):
+### Option 2: Use the MCP from a Azure Foundry Agent Service
+
+You can also use the MCP server from an Azure Foundry Agent Service.
+
+The agent has been implemented for you in the `challenge-2/agents/fraud_alert_foundry_agent.py` file.
+
+We have left a placeholder in the code so you can add the MCP server as a tool. In line 29, find:
+
 ```python
-# Add these imports for MCP integration
-from mcp_server import server as mcp_server
-from alert_mcp_connector import AlertMCPConnector
+mcp_tool = < PLACEHOLDER FOR MCP TOOL >
 ```
 
-2. **In your main orchestration function** (after analysis completion):
+Replace it by:
+
 ```python
-async def orchestrate_fraud_analysis(transaction_id: str, customer_id: str):
-    # ... existing orchestration logic ...
-    
-    # 🚀 ADD MCP INTEGRATION HERE
-    # Send results through MCP if high-risk detected
-    if final_result["risk_level"] in ["HIGH", "CRITICAL"]:
-        await notify_mcp_subscribers(final_result)
-    
-    return final_result
+mcp_tool = McpTool(
+    server_label="fraudalertmcp", 
+    server_url=mcp_endpoint,
+)
+mcp_tool.update_headers("Ocp-Apim-Subscription-Key",
+                        mcp_subscription_key)
 ```
 
-3. **Before the main execution block** (new function):
-```python
-# 🎯 ADD THIS FUNCTION FOR MCP NOTIFICATIONS
-async def notify_mcp_subscribers(analysis_result):
-    """Send fraud analysis results to MCP subscribers"""
-    mcp_payload = {
-        "type": "fraud_alert",
-        "data": analysis_result,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    # Broadcast to MCP clients
-    await mcp_server.broadcast_notification(mcp_payload)
+A few things here:
+- The kind of tool is [McpTool](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/how-to/tools/model-context-protocol-samples?pivots=python#create-an-agent-with-the-mcp-tool)
+- The subscription key header is required to authenticate against the API Management instance. Good stuff if you want to control access to your MCP server!
+
+### Run the Agent 
+
+Same as with option 1, to validate that the final Fraud Alert API is receiving requests from the agent, you can monitor the logs of the Container App hosting the Fraud Alert Manager API. In the terminal, run:
+
+```bash
+az containerapp logs show --name $CONTAINER_APP --resource-group $RG --follow
 ```
 
-#### GitHub Copilot Enhancement Tips
+Now, run the agent in another terminal:
 
-**💡 Copilot-Friendly Code Structure:**
-```python
-# Use clear, descriptive function names for better Copilot suggestions
-async def generate_fraud_alert_for_mcp(analysis_result: Dict) -> Dict:
-    """
-    Generate MCP-compatible fraud alert from analysis result
-    GitHub Copilot will understand this pattern and suggest relevant code
-    """
-    # Copilot will suggest alert structure based on function name and docstring
-    pass
-
-# Add type hints for better Copilot understanding
-def integrate_with_github_copilot_workspace(
-    mcp_endpoint: str, 
-    analysis_context: Dict[str, Any]
-) -> None:
-    """
-    Integration point for GitHub Copilot workspace features
-    This function name helps Copilot understand the integration intent
-    """
-    pass
+```bash
+cd agents
+python fraud_alert_foundry_agent.py
 ```
 
-**🔧 Suggested File Structure for Copilot:**
-```
-challenge-2/
-├── orchestration.py           # Main orchestration (add MCP calls here)
-├── mcp_server.py             # New: MCP server implementation  
-├── alert_connector.py        # New: Alert MCP integration
-├── copilot_integration.py    # New: GitHub Copilot specific features
-└── requirements.txt          # Update with MCP dependencies
-```
+See output on both terminals. You should see the agent sending requests to the Fraud Alert Manager API and receiving responses.
 
-**🎯 Key Integration Points:**
-- **Line ~85** in `orchestration.py`: After `final_result` is created
-- **Line ~12** in `orchestration.py`: Import section for MCP modules
-- **New file**: `mcp_server.py` for MCP protocol implementation
-- **Container Apps**: Environment variables for MCP endpoints
+Also, you can monitor the agent service in the Azure portal to see the conversations and tool usage.
 
-This setup transforms your fraud detection system into a comprehensive MCP-enabled service that integrates seamlessly with GitHub Copilot's workspace features and external alerting systems.
-
-````
