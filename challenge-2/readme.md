@@ -108,7 +108,7 @@ Replace it by:
 ```
 
 A few things here: 
-- The kind of tool is (MCPStreamableHTTPTool)(https://learn.microsoft.com/en-us/agent-framework/user-guide/model-context-protocol/using-mcp-tools?pivots=programming-language-python#mcpstreamablehttptool)
+- The kind of tool is [MCPStreamableHTTPTool](https://learn.microsoft.com/en-us/agent-framework/user-guide/model-context-protocol/using-mcp-tools?pivots=programming-language-python#mcpstreamablehttptool)
 - load_prompts is set to False because API Management exposed MCP server does not serve prompts.
 - The subscription key header is required to authenticate against the API Management instance. Good stuff if you want to control access to your MCP server!
 
