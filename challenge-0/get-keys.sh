@@ -166,9 +166,11 @@ fi
 # Application Insights
 if [ -n "$applicationInsightsName" ]; then
     appInsightsInstrumentationKey=$(az resource show --resource-group $resourceGroupName --name $applicationInsightsName --resource-type "Microsoft.Insights/components" --query properties.InstrumentationKey -o tsv 2>/dev/null || echo "")
+    appInsightsConnectionString=$(az resource show --resource-group $resourceGroupName --name $applicationInsightsName --resource-type "Microsoft.Insights/components" --query properties.ConnectionString -o tsv 2>/dev/null || echo "")
 else
     echo "Warning: Application Insights not found"
     appInsightsInstrumentationKey=""
+    appInsightsConnectionString=""
 fi
 
 # API Management
@@ -330,6 +332,11 @@ echo "ACR_NAME=\"$acrName\"" >> ../.env
 echo "ACR_USERNAME=\"$acrUsername\"" >> ../.env
 echo "ACR_PASSWORD=\"$acrPassword\"" >> ../.env
 echo "ACR_LOGIN_SERVER=\"$acrLoginServer\"" >> ../.env
+
+# Application Insights
+echo "APPLICATION_INSIGHTS_INSTRUMENTATION_KEY=\"$appInsightsInstrumentationKey\"" >> ../.env
+echo "APPLICATION_INSIGHTS_CONNECTION_STRING=\"$appInsightsConnectionString\"" >> ../.env
+echo "APPLICATIONINSIGHTS_CONNECTION_STRING=\"$appInsightsConnectionString\"" >> ../.env
 
 # For backward compatibility, also set OpenAI-style variables pointing to AI Foundry
 echo "AZURE_OPENAI_SERVICE_NAME=\"$aiFoundryHubName\"" >> ../.env
