@@ -25,19 +25,20 @@ Your fraud detection system supports **three different observability backends**,
 
 1. **Azure Application Insights (Recommended for Production)**
 
-**Application Insights** is our top choice because it is an **enterprise-grade** monitoring solution built specifically for production Azure workloads, offering a reliable **99.9% SLA**. It provides **rich business intelligence** through advanced **KQL querying**, customizable dashboards, and executive reporting. With **AI-powered anomaly detection** and flexible alerting rules, it ensures **intelligent alerting** to keep you informed. The platform supports **cost optimization** via pay-per-GB ingestion, intelligent sampling, and retention policies. **Security and compliance** are prioritized with built-in **PII filtering**, **GDPR adherence**, and robu
+**Application Insights** is our top choice because it is an **enterprise-grade** monitoring solution built specifically for production Azure workloads, offering a reliable **99.9% SLA**. It provides **rich business intelligence** through advanced **KQL querying**, customizable dashboards, and executive reporting. With **AI-powered anomaly detection** and flexible alerting rules, it ensures **intelligent alerting** to keep you informed. The platform supports **cost optimization** via pay-per-GB ingestion, intelligent sampling, and retention policies. **Security and compliance** are prioritized with built-in **PII filtering**, **GDPR adherence**, and robust enterprise security controls. As an **Azure-native** tool, it seamlessly integrates with Azure services, ARM templates, and Azure DevOps. Its **scalability** enables it to handle millions of events per second with automatic scaling, while **advanced features** like Application Map, Live Metrics, Performance Profiler, and Dependency Tracking provide deep insights and enhanced monitoring capabilities.
+
+Find out more on the [official](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) documentation.
 
 
 2. **OTLP Endpoint (Custom Monitoring Systems)**
 
-**🔧 When to Use OTLP:**
-Use OTLP when you have existing tools like Jaeger or Elastic APM, need vendor-neutral observability across clouds, or must keep data on-premises for compliance. It's also a great fit if you prefer open-source solutions and have custom dashboards in Grafana or Kibana.
+Use [OTLP](https://github.com/open-telemetry/opentelemetry-proto) when you have existing tools like Jaeger or Elastic APM, need vendor-neutral observability across clouds, or must keep data on-premises for compliance. It's also a great fit if you prefer open-source solutions and have custom dashboards in Grafana or Kibana.
 
 However, using OTLP means managing your own monitoring stack, including setup, scaling, and alerting. It offers basic tracing but lacks built-in business intelligence and advanced analytics.
 
-3. **VS Code Extension (Development Only)**
+3. **AI Toolkit VS Code Extension (Development Only)**
 
-This extension is ideal for development and testing scenarios. It allows real-time trace visualization during coding, supports step-through debugging with distributed trace context, and helps validate OpenTelemetry integration before deployment. It’s also useful for learning how traces are structured and for training developers on distributed tracing concepts.
+The [AI Toolkit Extension](https://learn.microsoft.com/en-us/windows/ai/toolkit/) is ideal for development and testing scenarios. It allows real-time trace visualization during coding, supports step-through debugging with distributed trace context, and helps validate OpenTelemetry integration before deployment. It’s also useful for learning how traces are structured and for training developers on distributed tracing concepts.
 
 However, this extension is not suitable for production workloads, as it lacks features like team collaboration, persistent trace storage, and business reporting. It is intended solely for individual developer use within local environments.
 
@@ -189,11 +190,11 @@ Congratulations! You've successfully transformed your fraud detection workflow i
 
 | Level | Purpose | Data Captured | Performance SLAs | Alerting Triggers |
 |-------|---------|---------------|------------------|-------------------|
-| 🎯 **Application** | End-to-end request | Trace ID, total latency, success rate | < 10s (95th percentile) | > 15s response time |
-| 🔄 **Workflow** | Business process flow | Transaction processing, step completion | < 8s workflow time | Any step failure |
-| 📥 **Executors** | Processing components | Step results, business logic, errors | < 5s per executor | Executor timeout/error |
-| 🗄️ **Dependencies** | External service calls | DB queries, AI calls, API responses | < 1s database, < 5s AI | Connection failures |
-| 📝 **Events** | Business milestones | Fraud indicators, decisions, approvals | Real-time logging | Risk score anomalies |
-| � **Metrics** | KPI measurement | Volumes, rates, distributions, trends | Continuous monitoring | Unusual pattern detection |
+| **Application** | End-to-end request | Trace ID, total latency, success rate | < 10s (95th percentile) | > 15s response time |
+| **Workflow** | Business process flow | Transaction processing, step completion | < 8s workflow time | Any step failure |
+| **Executors** | Processing components | Step results, business logic, errors | < 5s per executor | Executor timeout/error |
+| **Dependencies** | External service calls | DB queries, AI calls, API responses | < 1s database, < 5s AI | Connection failures |
+| **Events** | Business milestones | Fraud indicators, decisions, approvals | Real-time logging | Risk score anomalies |
+| **Metrics** | KPI measurement | Volumes, rates, distributions, trends | Continuous monitoring | Unusual pattern detection |
 
 Your fraud detection system now provides complete visibility into every transaction, from initial data retrieval through AI risk assessment to final compliance decisions. The Azure Application Insights dashboard gives executives, compliance teams, and DevOps engineers the transparency they need for confident production deployment.
