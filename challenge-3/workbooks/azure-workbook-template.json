@@ -1,0 +1,278 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "1f74ed9a-e3ed-498d-bd5b-f68f3836a117",
+            "version": "KqlParameterItem/1.0",
+            "name": "Resource",
+            "label": "Application Insights Resource",
+            "type": 5,
+            "description": "Select your Application Insights resource for fraud detection data",
+            "isRequired": true,
+            "multiSelect": false,
+            "quote": "'",
+            "delimiter": ",",
+            "typeSettings": {
+              "additionalResourceOptions": [
+                "value::1"
+              ],
+              "includeAll": false,
+              "showDefault": false
+            },
+            "timeContext": {
+              "durationMs": 86400000
+            },
+            "defaultValue": "value::1",
+            "value": "value::1"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters - 0"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "# 🎯 Executive Fraud Detection Dashboard\n\nComprehensive observability and business intelligence for fraud detection operations.\n\n**Selected Resource:** {Resource}\n\n**Latest Trace IDs:** `770ab72aab4a2aac76bdd675e5480c33`, `978a463d121ce049c6a7c66834875d0d`"
+      },
+      "name": "title"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "title": "🎯 Real-Time Fraud Detection Overview",
+        "items": [
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Transactions processed per hour\ntraces\n| where timestamp > ago(24h)\n| where message contains \"business_event.fraud_detection.transaction.started\"\n| extend transaction_id = tostring(customDimensions.[\"transaction_id\"])\n| where isnotnull(transaction_id)\n| summarize TransactionCount = count() by bin(timestamp, 1h)\n| render timechart title=\"Transactions Processed Per Hour\"",
+              "size": 0,
+              "title": "Transactions Processed Per Hour",
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "crossComponentResources": [
+                "{Resource}"
+              ]
+            },
+            "customWidth": "50",
+            "name": "transactions-per-hour"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Average risk score trend\ntraces\n| where timestamp > ago(24h) \n| where message contains \"business_event.fraud_detection.risk.assessed\"\n| extend risk_score = todouble(customDimensions.[\"risk_score\"])\n| where isnotnull(risk_score)\n| summarize AvgRiskScore = avg(risk_score) by bin(timestamp, 1h)\n| render timechart title=\"Average Risk Score Trend\"",
+              "size": 0,
+              "title": "Average Risk Score Trend",
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "risk-score-trend"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Compliance decision breakdown\ntraces\n| where timestamp > ago(24h)\n| where message contains \"business_event.fraud_detection.compliance.completed\"\n| extend compliance_rating = tostring(customDimensions.[\"compliance_rating\"])\n| where isnotnull(compliance_rating)\n| summarize Count = count() by compliance_rating\n| render piechart title=\"Compliance Decision Breakdown\"",
+              "size": 0,
+              "title": "Compliance Decision Breakdown",
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "compliance-decisions"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Processing time percentiles\ntraces\n| where timestamp > ago(24h)\n| where message contains \"business_event.fraud_detection.risk.assessed\"\n| extend processing_time = todouble(customDimensions.[\"processing_time_seconds\"])\n| where isnotnull(processing_time)\n| summarize \n    P50 = percentile(processing_time, 50),\n    P90 = percentile(processing_time, 90),\n    P95 = percentile(processing_time, 95),\n    P99 = percentile(processing_time, 99)\n    by bin(timestamp, 1h)\n| render timechart title=\"Processing Time Percentiles (seconds)\"",
+              "size": 0,
+              "title": "Processing Time Percentiles",
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "processing-times"
+          }
+        ]
+      },
+      "name": "fraud-detection-overview"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "title": "⚡ System Performance Health",
+        "items": [
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Database query performance\ndependencies\n| where timestamp > ago(24h)\n| where type == \"Azure DocumentDB\" or name contains \"cosmos\"\n| summarize \n    AvgDuration = avg(duration),\n    P95Duration = percentile(duration, 95),\n    RequestCount = count()\n    by bin(timestamp, 15m)\n| render timechart title=\"Database Query Performance\"",
+              "size": 0,
+              "title": "Database Query Performance",
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "database-performance"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// AI processing latencies\ntraces\n| where timestamp > ago(24h)\n| where message contains \"AI analysis completed\"\n| extend processing_time = todouble(customDimensions.[\"processing_time\"])\n| where isnotnull(processing_time)\n| summarize \n    AvgLatency = avg(processing_time),\n    MaxLatency = max(processing_time)\n    by bin(timestamp, 15m)\n| render timechart title=\"AI Processing Latencies\"",
+              "size": 0,
+              "title": "AI Processing Latencies",
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "ai-latencies"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Error rates by component\nexceptions\n| where timestamp > ago(24h)\n| extend component = case(\n    outerMessage contains \"customer_data\", \"Customer Data\",\n    outerMessage contains \"risk_analyzer\", \"Risk Analyzer\", \n    outerMessage contains \"compliance\", \"Compliance Report\",\n    \"Other\"\n)\n| summarize ErrorCount = count() by component, bin(timestamp, 1h)\n| render barchart title=\"Error Rates by Component\"",
+              "size": 0,
+              "title": "Error Rates by Component",
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "error-rates"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Dependency availability\ndependencies\n| where timestamp > ago(24h)\n| extend availability = iff(success == true, 1.0, 0.0)\n| summarize \n    AvailabilityPercent = avg(availability) * 100,\n    TotalRequests = count()\n    by target, bin(timestamp, 1h)\n| render timechart title=\"Dependency Availability %\"",
+              "size": 0,
+              "title": "Dependency Availability",
+              "timeContext": {
+                "durationMs": 86400000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "dependency-availability"
+          }
+        ]
+      },
+      "name": "performance-health"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "title": "🚨 Risk Management Intelligence",
+        "items": [
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// High-risk transaction patterns\ntraces\n| where timestamp > ago(7d)\n| where message contains \"business_event.fraud_detection.risk.assessed\"\n| extend \n    risk_score = todouble(customDimensions.[\"risk_score\"]),\n    recommendation = tostring(customDimensions.[\"recommendation\"]),\n    transaction_id = tostring(customDimensions.[\"transaction_id\"])\n| where risk_score > 0.7  // High risk threshold\n| summarize HighRiskCount = count() by bin(timestamp, 1d)\n| render timechart title=\"High-Risk Transaction Patterns (Risk > 0.7)\"",
+              "size": 0,
+              "title": "High-Risk Transaction Patterns",
+              "timeContext": {
+                "durationMs": 604800000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "high-risk-patterns"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Geographic risk distribution\ntraces\n| where timestamp > ago(7d)\n| where message contains \"Fraud indicators calculated\"\n| extend \n    country = tostring(customDimensions.[\"transaction.destination\"]),\n    high_risk_country = tobool(customDimensions.[\"fraud.indicator.high_risk_country\"])\n| where isnotnull(country)\n| summarize \n    TransactionCount = count(),\n    HighRiskCount = countif(high_risk_country == true)\n    by country\n| extend RiskPercentage = (HighRiskCount * 100.0) / TransactionCount\n| order by RiskPercentage desc\n| render table title=\"Geographic Risk Distribution\"",
+              "size": 0,
+              "title": "Geographic Risk Distribution",
+              "timeContext": {
+                "durationMs": 604800000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "geographic-risk"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Customer risk profiles\ntraces\n| where timestamp > ago(7d)\n| where message contains \"business_event.fraud_detection.risk.assessed\"\n| extend \n    risk_score = todouble(customDimensions.[\"risk_score\"]),\n    recommendation = tostring(customDimensions.[\"recommendation\"])\n| where isnotnull(risk_score)\n| summarize Count = count() by \n    RiskProfile = case(\n        risk_score < 0.3, \"Low Risk (0-0.3)\",\n        risk_score < 0.7, \"Medium Risk (0.3-0.7)\", \n        \"High Risk (0.7-1.0)\"\n    ),\n    Recommendation = recommendation\n| render piechart title=\"Customer Risk Profiles\"",
+              "size": 0,
+              "title": "Customer Risk Profiles",
+              "timeContext": {
+                "durationMs": 604800000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "customer-risk-profiles"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// Regulatory compliance status\ntraces\n| where timestamp > ago(7d)\n| where message contains \"business_event.fraud_detection.compliance.completed\"\n| extend \n    compliance_rating = tostring(customDimensions.[\"compliance_rating\"]),\n    immediate_action = tostring(customDimensions.[\"immediate_action\"]),\n    regulatory_filing = tostring(customDimensions.[\"regulatory_filing\"])\n| summarize \n    TotalReports = count(),\n    ImmediateActionRequired = countif(immediate_action == \"true\"),\n    RegulatoryFilingRequired = countif(regulatory_filing == \"true\")\n    by compliance_rating\n| extend \n    ImmediateActionPercent = (ImmediateActionRequired * 100.0) / TotalReports,\n    RegulatoryFilingPercent = (RegulatoryFilingRequired * 100.0) / TotalReports\n| render table title=\"Regulatory Compliance Status\"",
+              "size": 0,
+              "title": "Regulatory Compliance Status",
+              "timeContext": {
+                "durationMs": 604800000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components"
+            },
+            "customWidth": "50",
+            "name": "compliance-status"
+          }
+        ]
+      },
+      "name": "risk-intelligence"
+    }
+  ],
+  "styleSettings": {},
+  "fromTemplateId": "sentinel-UserAndEntityBehaviorAnalytics"
+}
