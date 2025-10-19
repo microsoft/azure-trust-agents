@@ -120,13 +120,6 @@ cd agents
 python compliance_report_agent.py
 ```
 
-#### **Run All Agents Together**:
-```bash
-cd agents
-pip3 azure-identity agent-framework
-python customer_data_agent.py && python risk_analyser_agent.py && python compliance_report_agent.py
-```
-
 **Agent Registration**: Running these scripts will register each agent with Azure AI Foundry and provide you with unique agent IDs needed for orchestration. Each agent becomes a reusable component that can be invoked independently or as part of the sequential workflow.
 
 ## Rule-Based vs AI-Based Decision Making 🎯
