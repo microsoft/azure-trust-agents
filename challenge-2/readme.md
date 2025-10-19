@@ -175,3 +175,26 @@ See output on both terminals. You should see the agent sending requests to the F
 
 Also, you can monitor the agent service in the Azure portal to see the conversations and tool usage.
 
+### Conclusion 🎉
+
+Congratulations! You've successfully integrated a **Model Context Protocol (MCP) server** with your AI agents, enabling seamless communication between your fraud detection system and external alert management services. You've learned to expose existing APIs as MCP servers through Azure API Management, connect agents to MCP endpoints, and build a scalable integration architecture for enterprise AI systems.
+
+Let's recap what you've accomplished in this challenge:
+
+| Component | Achievement | Technology Used | Business Value |
+|-----------|-------------|-----------------|----------------|
+| **API Exposure** | Transformed existing API into MCP server | Azure API Management | Zero-code MCP integration |
+| **Agent Integration** | Connected ChatAgent to external services | Agent Framework + MCP | Enhanced agent capabilities |
+| **Authentication** | Secured MCP endpoints with subscription keys | API Management Security | Enterprise-grade access control |
+| **Real-time Monitoring** | Enabled request/response tracking | Container Apps Logs | Operational visibility |
+| **Dual Implementation** | Built both Agent Framework and Foundry solutions | Multiple AI platforms | Flexible deployment options |
+
+Your fraud detection system now has the capability to leverage external alert management systems through standardized MCP protocols. This integration enables your agents to:
+
+- **Create real-time fraud alerts** when suspicious patterns are detected
+- **Retrieve existing alert information** to inform decision-making processes  
+- **Coordinate responses** across multiple fraud detection platforms
+- **Scale integrations** by adding more MCP servers as needed
+
+The MCP integration provides a foundation for building comprehensive multi-agent systems that can communicate with existing enterprise tools and services, making your AI agents more powerful and contextually aware.
+

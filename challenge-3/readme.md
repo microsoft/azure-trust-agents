@@ -177,13 +177,13 @@ Inspect your notebook and feel free to run some transactions to better analyse t
 
 ![alt text](images/image2.png)
 
-This dashboard is divided into 3 main sections: 
+Scroll all the way down to fully check the length of your dashboard. Your dashboard is divided into 3 main sections: 
 - **🎯 Real-Time Fraud Detection Overview** - Tracks transaction volumes, risk score trends, compliance decisions, and processing performance in real-time.
 - **⚡ System Performance Health** - Monitors database query performance, AI processing latencies, error rates, and dependency availability across all components.
 - **🚨 Risk Management Intelligence** - Analyzes high-risk transaction patterns, geographic risk distribution, customer risk profiles, and regulatory compliance status for strategic insights.
 
 
-### Conclusion
+### Conclusion 🎉
 
 Congratulations! You've successfully transformed your fraud detection workflow into a **fully observable, enterprise-grade system** with comprehensive monitoring and business intelligence capabilities. You've learned to implement OpenTelemetry integration with Azure Application Insights, create executive dashboards with fraud detection KPIs, and build a clean architecture with separated observability concerns. Let's recap with an overview of what are the observability sections we've monitored:
 
