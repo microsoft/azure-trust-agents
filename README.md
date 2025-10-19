@@ -1,5 +1,10 @@
 # Azure Trust and Compliance Multi-Agents Hack 
 
+![Public Preview](https://img.shields.io/badge/status-public--preview-yellow) 
+[![MS Learn Documentation](https://img.shields.io/badge/MS%20Learn-Documentation-blue)](https://learn.microsoft.com/en-us/agent-framework/)
+[![PyPI](https://img.shields.io/pypi/v/agent-framework)](https://pypi.org/project/agent-framework/)
+
+
 Welcome to the Automated Compliance Agents Hackathon! 🏦 Today, you'll dive into the world of intelligent agent systems powered by Azure AI to revolutionize regulatory compliance in financial services. Get ready for a hands-on, high-impact day of learning and innovation!
 
 ## Introduction 
@@ -18,12 +23,15 @@ By participating in this hackathon, you will learn how to:
 - **Deploy Agent-to-Agent Communication** leveraging A2A protocols for advanced multi-agent interactions and distributed compliance workflows.
 - **Apply Responsible AI & Observability** using OpenTelemetry monitoring, Azure AI Foundry tracking, and Log Analytics integration for production-ready agent systems.
 
+
+
 ## Architecture
 
 In this hackathon we will leverage the **Microsoft Agent Framework** to create a sophisticated, enterprise-ready compliance monitoring solution. For this reason, we will use 3 agents:
-**- Customer Data Agent:** Retrieves and standardizes customer and transaction data from Azure Cosmos DB to enable profiling and risk detection.
-**- Risk Analyzer Agent:** Assesses fraud risk and compliance by analyzing data against regulatory policies using Azure AI Search.
-**- Compliance Report Agent:** Produces formal compliance reports and audit documentation with summaries, findings, and recommendations for regulatory use.
+
+- **Customer Data Agent:** Retrieves and standardizes customer and transaction data from Azure Cosmos DB to enable profiling and risk detection.
+- **Risk Analyzer Agent:** Assesses fraud risk and compliance by analyzing data against regulatory policies using Azure AI Search.
+- **Compliance Report Agent:** Produces formal compliance reports and audit documentation with summaries, findings, and recommendations for regulatory use.
 
 ```
 High-Risk TX Input → [Customer Data Agent] → [Risk Analyzer Agent] → [Compliance Report Agent] → Audit Output
@@ -49,3 +57,8 @@ To successfully complete this hackathon, you will need the following:
 - **Challenge 02**: **[Connect to Alert MCP Server](challenge-2/readme.md)**: Step-by-step connection to your Alert MCP, deploy Container App with OpenAPI, expose as MCP Server, and integrate with orchestration using GitHub Copilot
 - **Challenge 03**: **[Making Your AI Agents Less Mysterious (and More Trackable)](challenge-3/readme.md)**: Transform your fraud detection workflow into a fully transparent, enterprise-grade system with comprehensive observability using OpenTelemetry and Azure Application Insights
 - **Challenge 04**: **[Responsible AI & Observability](challenge-4/readme.md)**: Implement Responsible AI practices, OpenTelemetry monitoring, GitHub Actions evaluation, and full integration with Log Analytics
+
+
+## Contributing
+We welcome contributions! Please see the [Contributing Guide](CONTRIBUTING.md) for details on coding standards, development environment setup and submission processes.
+
