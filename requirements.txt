@@ -9,7 +9,7 @@ anyio==4.9.0
 asttokens==3.0.0
 attrs==25.3.0
 av==14.4.0
-azure-ai-agents==1.1.0b4
+azure-ai-agents==1.2.0b5
 azure-ai-formrecognizer==3.3.3
 azure-ai-inference==1.0.0b9
 azure-cosmos
@@ -20,7 +20,7 @@ azure-identity==1.23.1
 azure-search==1.0.0b2
 azure-search-documents==11.5.3
 azure-storage-blob==12.25.1
-mem0ai==0.1.104
+mem0ai==0.1.117
 certifi==2025.7.9
 cffi==1.17.1
 chardet==5.2.0
@@ -63,7 +63,7 @@ jupyter_core==5.8.1
 lazy-object-proxy==1.11.0
 MarkupSafe==3.0.2
 matplotlib-inline==0.1.7
-mcp==1.11.0
+mcp==1.13.0
 more-itertools==10.7.0
 msal==1.32.3
 msal-extensions==1.3.1
@@ -72,13 +72,13 @@ multidict==6.6.3
 nest-asyncio==1.6.0
 numpy==2.3.1
 oauthlib==3.3.1
-openai==1.98.0
+openai==1.99.0
 openapi-core==0.19.5
 openapi-schema-validator==0.6.3
 openapi-spec-validator==0.7.2
-opentelemetry-api==1.35.0
-opentelemetry-sdk==1.35.0
-opentelemetry-semantic-conventions==0.56b0
+opentelemetry-api==1.37.0
+opentelemetry-sdk==1.37.0
+opentelemetry-semantic-conventions==0.58b0
 packaging==25.0
 pandas==2.3.1
 parse==1.20.2
@@ -88,7 +88,7 @@ platformdirs==4.3.8
 prance==25.4.8.0
 prompt_toolkit==3.0.51
 propcache==0.3.2
-protobuf==6.31.1
+protobuf==5.29.5
 psutil==7.0.0
 pure_eval==0.2.3
 pybars4==0.9.13
@@ -134,7 +134,7 @@ urllib3==2.5.0
 uv==0.7.20
 uvicorn==0.35.0
 wcwidth==0.2.13
-websockets==15.0.1
+websockets==15.0
 Werkzeug==3.1.1
 yarl==1.20.1
 zipp==3.23.0
