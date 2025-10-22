@@ -55,8 +55,86 @@ However, this extension is not suitable for production workloads, as it lacks fe
 | **Advanced Analytics** | ✅ AI-Powered Insights | ❌ Manual Analysis | ❌ No Analytics |
 | **Global Scale** | ✅ Multi-Region Built-in | ⚠️ Complex Setup | ❌ Single Machine |
 
+## How are we Monitoring our code?
 
-## What will we be monitoring?
+#### 1. **TelemetryManager Class** (`telemetry.py`)
+This is the central orchestrator that manages all observability aspects:
+
+- **Multiple Exporters**: Supports Azure Application Insights, OTLP endpoints, and VS Code extension
+- **Business Metrics**: Custom counters and histograms for fraud detection KPIs
+- **Trace Management**: Creates spans, records events, and manages trace context
+- **Application Insights Integration**: Direct integration for legacy support and immediate event flushing
+
+##### 2. **Three-Tier Observability Strategy**
+
+**🔍 Application Level**
+```python
+with telemetry.create_workflow_span("fraud_detection_application") as main_span:
+    trace_id = get_current_trace_id()
+    print(f"📊 Trace ID: {trace_id}")
+```
+
+**⚙️ Workflow Level**
+```python
+with telemetry.create_workflow_span("fraud_detection_workflow") as workflow_span:
+    # Tracks end-to-end business process
+```
+
+**🧩 Executor Level**
+```python
+with telemetry.create_processing_span(
+    executor_id="customer_data_executor",
+    executor_type="DataRetrieval",
+    message_type="AnalysisRequest"
+) as span:
+```
+
+##### 3. **Performance Metrics**
+
+The system automatically collects comprehensive performance metrics at every stage of the fraud detection workflow:
+
+**📈 Transaction Processing Metrics**
+```python
+# Records when each transaction reaches different pipeline stages
+telemetry.record_transaction_processed("data_retrieval", request.transaction_id)
+telemetry.record_transaction_processed("risk_analysis", request.transaction_id) 
+telemetry.record_transaction_processed("compliance_report", request.transaction_id)
+```
+
+**🎯 Risk Assessment Metrics**
+```python
+# Captures risk scores and recommendations for trend analysis
+telemetry.record_risk_score(
+    risk_score=0.85,                    # Numerical risk score (0.0-1.0)
+    transaction_id="TX1012",            # Transaction identifier
+    recommendation="BLOCK"              # APPROVE/INVESTIGATE/BLOCK
+)
+```
+
+**⚖️ Compliance Decision Metrics**
+```python
+# Tracks compliance outcomes and regulatory actions
+telemetry.record_compliance_decision(
+    decision="NON_COMPLIANT",           # Compliance status
+    transaction_id="TX1012",            # Transaction identifier  
+    immediate_action="true",            # Requires immediate action
+    regulatory_filing="true"            # Needs regulatory reporting
+)
+```
+
+**⏱️ Performance Timing Metrics**
+```python
+# AI processing performance tracking
+processing_time = end_time - start_time
+span.set_attribute("ai.processing_time_seconds", processing_time)
+
+# Database query performance
+span.set_attribute("db.query_duration_ms", query_time_ms)
+span.set_attribute("cosmos_db.success", True)
+```
+
+
+## What is being monitored?
 
 To ensure the robustness and effectiveness of our fraud detection system, we will be closely tracking a variety of critical metrics. These metrics are designed to provide comprehensive insights into the business outcomes, system performance, and potential issues that require immediate attention. By monitoring these indicators, we can proactively optimize operations, maintain high service quality, and quickly respond to any anomalies or failures.
 
@@ -76,8 +154,6 @@ To ensure the robustness and effectiveness of our fraud detection system, we wil
 - AI processing failures (model availability issues)
 - High error rates in any workflow step
 
-## Where are we monitoring these components?
-WIP
 
 ## Step-by-Step Guide
 
