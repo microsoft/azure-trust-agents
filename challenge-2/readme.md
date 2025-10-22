@@ -41,7 +41,7 @@ echo "Swagger UI URL: http://$CONTAINER_APP_URL/v1/swagger-ui/index.html"
    ![Onboard API](images/1_onboardapi.png)
    - Provide the URL to the Swagger JSON of the Fraud Alert Manager API, which can be found at:
    ```bash
-   echo http://$CONTAINER_APP_URL/v1/v3/api-docs
+   echo https://$CONTAINER_APP_URL/v1/v3/api-docs
    ```
    ![Import API](images/2_createapi.png)
    - Click "Create".
@@ -55,7 +55,7 @@ echo "Swagger UI URL: http://$CONTAINER_APP_URL/v1/swagger-ui/index.html"
    ![Override endpoint](images/4_overridebackend.png)
    - Test API operations in the Azure portal to ensure everything is working correctly. For instance, get all alerts as shown in the video:
 
-   ![Test API](images/5_testapi.gif)
+   ![Test API](images/5_testapi_hq.gif)
 
 ### Create MCP Server from your API
 
