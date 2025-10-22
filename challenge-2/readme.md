@@ -55,7 +55,7 @@ echo "Swagger UI URL: http://$CONTAINER_APP_URL/v1/swagger-ui/index.html"
    ![Override endpoint](images/4_overridebackend.png)
    - Test API operations in the Azure portal to ensure everything is working correctly. For instance, get all alerts as shown in the video:
 
-   ![Test API](images/5_testapi.gif)
+   ![Test API](images/5_testapi_hq.gif)
 
 ### Create MCP Server from your API
 
