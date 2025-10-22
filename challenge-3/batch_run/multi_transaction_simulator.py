@@ -7,7 +7,13 @@ Generates multiple transactions to populate Application Insights with rich obser
 import asyncio
 import time
 import random
+import sys
+import os
 from datetime import datetime
+
+# Add parent directory to path to import workflow_observability
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from workflow_observability import run_fraud_detection_workflow, AnalysisRequest
 
 # Transaction IDs available in the Cosmos DB

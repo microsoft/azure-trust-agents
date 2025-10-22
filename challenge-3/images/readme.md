@@ -77,29 +77,35 @@ To ensure the robustness and effectiveness of our fraud detection system, we wil
 - High error rates in any workflow step
 
 ## Where are we monitoring these components?
-WIP
+
 
 ## Step-by-Step Guide
 
 **1. Run the workflow**
 
-Let's run our workflow. Let's process 10 transactions for better dashboard visualization:
+Let's run our workflow. You can either run a single transaction or process multiple transactions for richer dashboard data:
 
 ```bash
-python challenge-3/batch_run/batch_runner.py
+cd challenge-3
+
+# Option 1: Single transaction (TX1001)
+python workflow_observability.py
+
+# Option 2: Process 10 transactions for better dashboard visualization
+python batch_run/batch_runner.py
+
+# Option 3: Quick demo with 5 transactions
+python batch_run/batch_runner.py quick
 ```
 
+**Tip:** Use the batch runner to generate more data points for your Application Insights dashboard!
 
-**2. Navigate to Application Insights**
+**2. Find your resource**
 
-Follow these steps to access your Application Insights resource:
-
-1. Open the **Azure Portal** in your web browser
-2. Search for and select your **Application Insights** resource
-3. In the left navigation menu, click on **Monitoring**
-4. Select **Logs** from the monitoring options
-5. Ensure you're in **KQL Mode** (on the right-hand part of your screen)
-
+Navigate to your 💡 Application Insights resource and its components under this path:
+```bash
+Azure Portal → Application Insights → Monitoring → Logs → KQL Mode
+```
 **3. Try some KQL Queries for Readability**
 
 Let's try this first query that will produce a real-time plot comparing the transactions that have been started being analysed and the risk assessed:
@@ -154,7 +160,7 @@ traces
 ```
 You should be getting a plot similar to the following one:
 
-![alt text](images/image.png)
+![alt text](images/kustoq1.png)
 
 
 **4. Build your Monitoring Workbook**
@@ -181,9 +187,11 @@ Scroll all the way down to fully check the length of your dashboard. Your dashbo
 - **🚨 Risk Management Intelligence** - Analyzes high-risk transaction patterns, geographic risk distribution, customer risk profiles, and regulatory compliance status for strategic insights.
 
 
-### **5. Transaction Search and Tracing Deep Dive**
+**5. Transaction Search and Tracing Deep Dive**
 
 One of the most powerful observability features in our fraud detection system is the ability to **search and trace individual transactions** across the entire workflow. This capability is essential for investigating specific fraud cases, troubleshooting failed transactions, and conducting compliance audits.
+
+### 🔍 **How Transaction Search Works**
 
 Our system creates a **unique trace ID** for each transaction that flows through the entire fraud detection pipeline. This trace ID connects all related operations - from initial data retrieval through AI risk assessment to final compliance decisions.
 
@@ -197,14 +205,14 @@ For a run of 15 transactions, I can see 180 traces.
 
 In our use case, for each transaction processed (unique trace ID), we will have 12 traces. In the example below, for a run of 15 transactions, I can see 180 traces.
 
-![alt text](images/tracing1.png)
+![alt text](tracing1.png)
 
 
 5. Click on the first Trace option that appears on the list. It should be named: **workflow.completed**
 
 6. You should be able to see a screen similar to the one below. 
 
-![alt text](images/tracing2.png)
+![alt text](tracing2.png)
 
 - On the top section of your screen you can see the OperationID (unique trace id for this specific transaction)
 - On the centre part of your sceen, you can find a table that is divided into the following components:
@@ -218,7 +226,7 @@ In our use case, for each transaction processed (unique trace ID), we will have 
 
 We can now see a `workflow.run` component, with 3 `executor.process` created corresponding to our 3 agents. 
 
-8. When clicking on any row `invoke_agent XXX` you can find a detailed section on what happens on the agent, divided into `Internal Properties` and `External Properties`. On the latter, we can find several signals that are important for our agent tracing, such as the input/output messages in/out of our AI Foundry Agent, as well as number of tokens produced for both input and output.
+8. When clicking on any row `invoke_agent XXX` you can find a detailed section on what happens on the agent, divided into `Internal Properties` and `External Properties`.
 
 ![alt text](images/tracing4.png)
 

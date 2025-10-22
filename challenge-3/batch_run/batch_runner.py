@@ -6,6 +6,11 @@ Quick way to generate multiple transactions for observability testing
 
 import asyncio
 import sys
+import os
+
+# Add parent directory to path to import workflow_observability
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from multi_transaction_simulator import quick_demo, stress_test, business_day_simulation, run_multiple_transactions
 
 async def main():

@@ -27,7 +27,6 @@
     "logAnalyticsWorkspaceName": "[format('{0}-loganalytics-{1}', variables('prefix'), variables('suffix'))]",
     "searchServiceName": "[format('{0}-search-{1}', variables('prefix'), variables('suffix'))]",
     "containerRegistryName": "[replace(format('{0}cr{1}', variables('prefix'), variables('suffix')), '-', '')]",
-    "keyVaultName": "[format('{0}kv{1}', variables('prefix'), variables('suffix'))]",
     "aiFoundryName": "[format('{0}-aifoundry-{1}', variables('prefix'), variables('suffix'))]",
     "aiProjectName": "[format('{0}-aiproject-{1}', variables('prefix'), variables('suffix'))]",
     "applicationInsightsName": "[format('{0}-appinsights-{1}', variables('prefix'), variables('suffix'))]",
@@ -92,6 +91,10 @@
       "name": "[variables('cosmosDbAccountName')]",
       "location": "[parameters('location')]",
       "kind": "GlobalDocumentDB",
+      "tags": {
+        "CostControl": "Ignore",
+        "SecurityControl": "Ignore"
+      },
       "identity": {
         "type": "SystemAssigned"
       },
@@ -234,26 +237,6 @@
       "dependsOn": [
         "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
       ]
-    },
-    {
-      "type": "Microsoft.KeyVault/vaults",
-      "apiVersion": "2023-07-01",
-      "name": "[variables('keyVaultName')]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "sku": {
-          "family": "A",
-          "name": "standard"
-        },
-        "tenantId": "[subscription().tenantId]",
-        "accessPolicies": [],
-        "enabledForDeployment": false,
-        "enabledForDiskEncryption": false,
-        "enabledForTemplateDeployment": false,
-        "enableSoftDelete": true,
-        "softDeleteRetentionInDays": 90,
-        "enableRbacAuthorization": true
-      }
     },
     {
       "type": "Microsoft.CognitiveServices/accounts",
@@ -431,10 +414,6 @@
     "aiFoundryProjectName": {
       "type": "string",
       "value": "[variables('aiProjectName')]" 
-    },
-    "keyVaultName": {
-      "type": "string",
-      "value": "[variables('keyVaultName')]"
     },
     "containerRegistryName": {
       "type": "string",

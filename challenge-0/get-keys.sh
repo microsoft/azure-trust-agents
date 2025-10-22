@@ -47,11 +47,17 @@ if [ -z "$logAnalyticsWorkspaceName" ]; then
     echo "No Log Analytics workspace found. Please enter the workspace name manually:"
     read logAnalyticsWorkspaceName
 fi
-logAnalyticsWorkspaceId=$(az monitor log-analytics workspace show --resource-group $resourceGroupName --workspace-name $logAnalyticsWorkspaceName --query customerId -o tsv 2>/dev/null || echo "")
+if [ -n "$logAnalyticsWorkspaceName" ]; then
+    logAnalyticsWorkspaceId=$(az monitor log-analytics workspace show --resource-group $resourceGroupName --workspace-name $logAnalyticsWorkspaceName --query customerId -o tsv 2>/dev/null || echo "")
+    if [ -n "$logAnalyticsWorkspaceId" ]; then
+        echo "Retrieved Log Analytics workspace ID: $logAnalyticsWorkspaceId"
+    fi
+else
+    logAnalyticsWorkspaceId=""
+fi
 searchServiceName=$(az deployment group show --resource-group $resourceGroupName --name $deploymentName --query "properties.outputs.searchServiceName.value" -o tsv 2>/dev/null || echo "")
 aiFoundryHubName=$(az deployment group show --resource-group $resourceGroupName --name $deploymentName --query "properties.outputs.aiFoundryHubName.value" -o tsv 2>/dev/null || echo "")
 aiFoundryProjectName=$(az deployment group show --resource-group $resourceGroupName --name $deploymentName --query "properties.outputs.aiFoundryProjectName.value" -o tsv 2>/dev/null || echo "")
-keyVaultName=$(az deployment group show --resource-group $resourceGroupName --name $deploymentName --query "properties.outputs.keyVaultName.value" -o tsv 2>/dev/null || echo "")
 containerRegistryName=$(az deployment group show --resource-group $resourceGroupName --name $deploymentName --query "properties.outputs.containerRegistryName.value" -o tsv 2>/dev/null || echo "")
 applicationInsightsName=$(az deployment group show --resource-group $resourceGroupName --name $deploymentName --query "properties.outputs.applicationInsightsName.value" -o tsv 2>/dev/null || echo "")
 
@@ -68,7 +74,7 @@ aiFoundryProjectEndpoint=$(az deployment group show --resource-group $resourceGr
 
 
 # If deployment outputs are empty, try to discover resources by type
-if [ -z "$storageAccountName" ] || [ -z "$logAnalyticsWorkspaceName" ] || [ -z "$keyVaultName" ] || [ -z "$containerRegistryName" ]; then
+if [ -z "$storageAccountName" ] || [ -z "$logAnalyticsWorkspaceName" ] || [ -z "$containerRegistryName" ]; then
     echo "Some deployment outputs not found, discovering missing resources by type..."
     
     if [ -z "$storageAccountName" ]; then
@@ -76,7 +82,11 @@ if [ -z "$storageAccountName" ] || [ -z "$logAnalyticsWorkspaceName" ] || [ -z "
     fi
     
     if [ -z "$logAnalyticsWorkspaceName" ]; then
+        echo "Discovering Log Analytics workspace..."
         logAnalyticsWorkspaceName=$(az monitor log-analytics workspace list --resource-group $resourceGroupName --query "[0].name" -o tsv 2>/dev/null || echo "")
+        if [ -n "$logAnalyticsWorkspaceName" ]; then
+            echo "Found Log Analytics workspace: $logAnalyticsWorkspaceName"
+        fi
     fi
     
     if [ -z "$searchServiceName" ]; then
@@ -85,10 +95,6 @@ if [ -z "$storageAccountName" ] || [ -z "$logAnalyticsWorkspaceName" ] || [ -z "
     
     if [ -z "$aiFoundryHubName" ]; then
         aiFoundryHubName=$(az cognitiveservices account list --resource-group $resourceGroupName --query "[?kind=='AIServices'].name | [0]" -o tsv 2>/dev/null || echo "")
-    fi
-    
-    if [ -z "$keyVaultName" ]; then
-        keyVaultName=$(az keyvault list --resource-group $resourceGroupName --query "[0].name" -o tsv 2>/dev/null || echo "")
     fi
     
     if [ -z "$containerRegistryName" ]; then
@@ -231,6 +237,21 @@ if [ -z "$storageAccountName" ] || [ -z "$aiFoundryProjectName" ]; then
     searchServiceName=$(az search service list --resource-group $resourceGroupName --query "[0].name" -o tsv 2>/dev/null || echo "")
     aiFoundryHubName=$(az cognitiveservices account list --resource-group $resourceGroupName --query "[?kind=='AIServices'].name | [0]" -o tsv 2>/dev/null || echo "")
     applicationInsightsName=$(az resource list --resource-group $resourceGroupName --resource-type "Microsoft.Insights/components" --query "[0].name" -o tsv 2>/dev/null || echo "")
+    
+    # Try to discover AI Foundry project name if missing
+    if [ -z "$aiFoundryProjectName" ] && [ -n "$aiFoundryHubName" ]; then
+        echo "Attempting to discover AI Foundry project for hub: $aiFoundryHubName"
+        # Look for resources with 'aiproject' in the name using direct resource listing
+        aiFoundryProjectName=$(az resource list --resource-group $resourceGroupName --query "[?contains(name, 'aiproject')].name | [0]" -o tsv 2>/dev/null || echo "")
+        if [ -n "$aiFoundryProjectName" ]; then
+            echo "Found AI project resource: $aiFoundryProjectName"
+        else
+            # Fallback: construct expected project name based on hub name pattern
+            # Hub: {prefix}-aifoundry-{suffix} -> Project: {prefix}-aiproject-{suffix}
+            aiFoundryProjectName=$(echo "$aiFoundryHubName" | sed 's/-aifoundry-/-aiproject-/')
+            echo "Constructed AI project name from hub name: $aiFoundryProjectName"
+        fi
+    fi
 fi
 
 # Construct Azure AI Search connection ID directly
@@ -254,17 +275,7 @@ else
     azureAIConnectionId=""
 fi
 
-# Construct AI Foundry Project Endpoint if not found in deployment outputs
-if [ -z "$aiFoundryProjectEndpoint" ] && [ -n "$aiFoundryHubName" ] && [ -n "$aiFoundryProjectName" ]; then
-    echo "Constructing AI Foundry Project Endpoint..."
-    aiFoundryProjectEndpoint="https://${aiFoundryHubName}.services.ai.azure.com/api/projects/${aiFoundryProjectName}"
-    echo "Constructed project endpoint: $aiFoundryProjectEndpoint"
-elif [ -n "$aiFoundryProjectEndpoint" ] && [[ "$aiFoundryProjectEndpoint" == *"ai.azure.com/build/overview"* ]]; then
-    # If we got a web UI URL from deployment outputs, convert it to API endpoint
-    echo "Converting web UI URL to API endpoint..."
-    aiFoundryProjectEndpoint="https://${aiFoundryHubName}.services.ai.azure.com/api/projects/${aiFoundryProjectName}"
-    echo "Converted project endpoint: $aiFoundryProjectEndpoint"
-fi
+# Note: AI Foundry Project Endpoint construction is handled later in the script
 
 # Overwrite the existing .env file
 if [ -f ../.env ]; then
@@ -281,6 +292,7 @@ echo "AZURE_STORAGE_CONNECTION_STRING=\"$storageAccountConnectionString\"" >> ..
 
 # Other Azure services
 echo "LOG_ANALYTICS_WORKSPACE_NAME=\"$logAnalyticsWorkspaceName\"" >> ../.env
+echo "LOG_ANALYTICS_WORKSPACE_ID=\"$logAnalyticsWorkspaceId\"" >> ../.env
 echo "SEARCH_SERVICE_NAME=\"$searchServiceName\"" >> ../.env
 echo "SEARCH_SERVICE_ENDPOINT=\"$searchServiceEndpoint\"" >> ../.env
 echo "SEARCH_ADMIN_KEY=\"$searchServiceKey\"" >> ../.env
@@ -305,15 +317,47 @@ fi
 echo "AI_FOUNDRY_HUB_ENDPOINT=\"$aiFoundryHubEndpoint\"" >> ../.env
 
 # Construct AI Foundry Project Endpoint if not found in deployment outputs
-if [ -z "$aiFoundryProjectEndpoint" ] && [ -n "$aiFoundryHubName" ] && [ -n "$aiFoundryProjectName" ]; then
+if [ -z "$aiFoundryProjectEndpoint" ] && [ -n "$aiFoundryHubName" ]; then
     echo "Constructing AI Foundry Project Endpoint..."
-    aiFoundryProjectEndpoint="https://${aiFoundryHubName}.services.ai.azure.com/api/projects/${aiFoundryProjectName}"
-    echo "Constructed project endpoint: $aiFoundryProjectEndpoint"
+    
+    # Ensure we have the project name
+    if [ -z "$aiFoundryProjectName" ]; then
+        echo "Attempting to discover AI Foundry project..."
+        # Look for resources with 'aiproject' in the name
+        aiFoundryProjectName=$(az resource list --resource-group $resourceGroupName --query "[?contains(name, 'aiproject')].name | [0]" -o tsv 2>/dev/null || echo "")
+        if [ -n "$aiFoundryProjectName" ]; then
+            echo "Found AI project resource: $aiFoundryProjectName"
+        else
+            # Fallback: construct expected project name based on hub name pattern
+            aiFoundryProjectName=$(echo "$aiFoundryHubName" | sed 's/-aifoundry-/-aiproject-/')
+            echo "Constructed AI project name from hub pattern: $aiFoundryProjectName"
+        fi
+    fi
+    
+    # Construct the correct AI Foundry project endpoint
+    if [ -n "$aiFoundryHubName" ] && [ -n "$aiFoundryProjectName" ]; then
+        aiFoundryProjectEndpoint="https://${aiFoundryHubName}.services.ai.azure.com/api/projects/${aiFoundryProjectName}"
+        echo "Constructed AI Foundry project endpoint: $aiFoundryProjectEndpoint"
+    fi
 elif [ -n "$aiFoundryProjectEndpoint" ] && [[ "$aiFoundryProjectEndpoint" == *"ai.azure.com/build/overview"* ]]; then
     # If we got a web UI URL from deployment outputs, convert it to API endpoint
     echo "Converting web UI URL to API endpoint..."
-    aiFoundryProjectEndpoint="https://${aiFoundryHubName}.services.ai.azure.com/api/projects/${aiFoundryProjectName}"
-    echo "Converted project endpoint: $aiFoundryProjectEndpoint"
+    
+    # Ensure we have the project name for URL construction
+    if [ -z "$aiFoundryProjectName" ]; then
+        # Look for resources with 'aiproject' in the name
+        aiFoundryProjectName=$(az resource list --resource-group $resourceGroupName --query "[?contains(name, 'aiproject')].name | [0]" -o tsv 2>/dev/null || echo "")
+        if [ -z "$aiFoundryProjectName" ] && [ -n "$aiFoundryHubName" ]; then
+            # Fallback: construct from hub name
+            aiFoundryProjectName=$(echo "$aiFoundryHubName" | sed 's/-aifoundry-/-aiproject-/')
+            echo "Constructed AI project name for URL conversion: $aiFoundryProjectName"
+        fi
+    fi
+    
+    if [ -n "$aiFoundryHubName" ] && [ -n "$aiFoundryProjectName" ]; then
+        aiFoundryProjectEndpoint="https://${aiFoundryHubName}.services.ai.azure.com/api/projects/${aiFoundryProjectName}"
+        echo "Converted to API endpoint: $aiFoundryProjectEndpoint"
+    fi
 fi
 echo "AI_FOUNDRY_PROJECT_ENDPOINT=\"$aiFoundryProjectEndpoint\"" >> ../.env
 echo "AZURE_AI_CONNECTION_ID=\"$azureAIConnectionId\"" >> ../.env
@@ -356,7 +400,8 @@ echo "Search Service: $searchServiceName"
 echo "API Management: $apiManagementName"
 echo "AI Foundry Hub: $aiFoundryHubName"
 echo "AI Foundry Project: $aiFoundryProjectName"
-echo "Key Vault: $keyVaultName"
+echo "AI Foundry Hub Endpoint: $aiFoundryHubEndpoint"
+echo "AI Foundry Project Endpoint: $aiFoundryProjectEndpoint"
 echo "Container Registry: $containerRegistryName"
 echo "Application Insights: $applicationInsightsName"
 
