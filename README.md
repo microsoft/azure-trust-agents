@@ -1,10 +1,5 @@
 # Azure Trust and Compliance Multi-Agents Hack 
 
-![Public Preview](https://img.shields.io/badge/status-public--preview-yellow) 
-[![MS Learn Documentation](https://img.shields.io/badge/MS%20Learn-Documentation-blue)](https://learn.microsoft.com/en-us/agent-framework/)
-[![PyPI](https://img.shields.io/pypi/v/agent-framework)](https://pypi.org/project/agent-framework/)
-
-
 Welcome to the Automated Compliance Agents Hackathon! 🏦 Today, you'll dive into the world of intelligent agent systems powered by Azure AI to revolutionize regulatory compliance in financial services. Get ready for a hands-on, high-impact day of learning and innovation!
 
 ## Introduction 
@@ -24,23 +19,17 @@ By participating in this hackathon, you will learn how to:
 - **Apply Enterprise Observability** using OpenTelemetry monitoring, Azure AI Foundry tracking, and comprehensive system observability for production-ready agent systems.
 - **Build Production-Ready Frontend** by deploying and integrating an Angular-based fraud alert management interface with real-time dashboards, alert management, and comprehensive analytics visualization.
 
-
-
 ## Architecture
 
-In this hackathon we will leverage the **Microsoft Agent Framework** to create a sophisticated, enterprise-ready compliance monitoring solution. For this reason, we will use 3 agents:
+In this hackathon we will leverage the **Microsoft Agent Framework** to create a sophisticated, enterprise-ready compliance monitoring solution. For this reason, we will use 3 agents to create a sequential workflow: 
 
 - **Customer Data Agent:** Retrieves and standardizes customer and transaction data from Azure Cosmos DB to enable profiling and risk detection.
 - **Risk Analyzer Agent:** Assesses fraud risk and compliance by analyzing data against regulatory policies using Azure AI Search.
 - **Compliance Report Agent:** Produces formal compliance reports and audit documentation with summaries, findings, and recommendations for regulatory use.
 
-```
-High-Risk TX Input → [Customer Data Agent] → [Risk Analyzer Agent] → [Compliance Report Agent] → Audit Output
-                      ↓ Cosmos DB          ↓ Azure AI Search      ↓ MCP Alert Server
-                   Transaction Data      Regulatory Rules        Real-time Alerts
-```
+<img width="1744" height="715" alt="image" src="https://github.com/user-attachments/assets/ef171385-4141-46e1-acff-95204b351335" />
 
-The pipeline ensures continuous monitoring of flagged events, rapid response to high-risk activities, and robust compliance reporting with full observability.
+The workflow ensures continuous monitoring of flagged events, rapid response to high-risk activities, and robust compliance reporting with full observability.
 
 ## Requirements
 To successfully complete this hackathon, you will need the following:
