@@ -11,7 +11,7 @@ Welcome to the Automated Compliance Agents Hackathon! 🏦 Today, you'll dive in
 
 Get ready to transform compliance with AI using the revolutionary **Microsoft Agent Framework**! In this hackathon, you'll master the latest enterprise-grade agent technology to build intelligent compliance systems that parse regulations, monitor transactions, and generate transparent audit trails—just like real compliance teams, but faster and more accurate. 
 
-Using sequential orchestration, MCP integration, and Agent-to-Agent communication, your specialized agents will collaborate seamlessly to automate complex regulatory workflows in minutes, not months. From data ingestion through risk analysis to compliance reporting, you'll create a production-ready multi-agent system with full observability that redefines how financial institutions stay compliant and build trust. 
+Using sequential orchestration, MCP integration, and Agent-to-Agent communication, your specialized agents will collaborate seamlessly to automate complex regulatory workflows in minutes, not months. From data ingestion through risk analysis to compliance reporting and frontend visualization, you'll create a production-ready multi-agent system with comprehensive observability and a professional management interface that redefines how financial institutions stay compliant and build trust. 
 
 ## Learning Objectives 🎯
 
@@ -21,7 +21,8 @@ By participating in this hackathon, you will learn how to:
 - **Build Specialized Compliance Agents** (Customer Data, Risk Analyzer, Compliance Reporter) with advanced prompt engineering, tool integration, and persistent memory capabilities.
 - **Implement MCP Integration** using Model Context Protocol (MCP) servers to connect agents with external compliance systems, alert mechanisms, and enterprise tools seamlessly.
 - **Deploy Agent-to-Agent Communication** leveraging A2A protocols for advanced multi-agent interactions and distributed compliance workflows.
-- **Apply Responsible AI & Observability** using OpenTelemetry monitoring, Azure AI Foundry tracking, and Log Analytics integration for production-ready agent systems.
+- **Apply Enterprise Observability** using OpenTelemetry monitoring, Azure AI Foundry tracking, and comprehensive system observability for production-ready agent systems.
+- **Build Production-Ready Frontend** by deploying and integrating an Angular-based fraud alert management interface with real-time dashboards, alert management, and comprehensive analytics visualization.
 
 
 
@@ -56,7 +57,7 @@ To successfully complete this hackathon, you will need the following:
 - **Challenge 01**: **[Microsoft Agent Framework](challenge-1/README.md)**: Learn the Agent Framework, create 2 core agents, build a 3rd auditing agent, implement sequential orchestration, and create sequential workflows
 - **Challenge 02**: **[Connect to Alert MCP Server](challenge-2/readme.md)**: Step-by-step connection to your Alert MCP, deploy Container App with OpenAPI, expose as MCP Server, and integrate with orchestration using GitHub Copilot
 - **Challenge 03**: **[Making Your AI Agents Less Mysterious (and More Trackable)](challenge-3/readme.md)**: Transform your fraud detection workflow into a fully transparent, enterprise-grade system with comprehensive observability using OpenTelemetry and Azure Application Insights
-- **Challenge 04**: **[Responsible AI & Observability](challenge-4/readme.md)**: Implement Responsible AI practices, OpenTelemetry monitoring, GitHub Actions evaluation, and full integration with Log Analytics
+- **Challenge 04**: **[Fraud Alert Management Frontend](challenge-4/readme.md)**: Deploy and integrate a fraud alert management frontend with your agent system, including real-time alert visualization, dashboard analytics, and comprehensive alert management capabilities
 
 
 ## Contributing
