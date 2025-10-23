@@ -19,7 +19,7 @@ TX Input → [Customer Data Agent] → [Risk Analyzer Agent] → [Compliance Rep
 
 The new Microsoft Agent Framework, released in October 2025, is an open-source SDK and runtime for building, orchestrating, and deploying sophisticated AI agents and multi-agent systems for both .NET and Python. It unifies the proven, enterprise-grade Semantic Kernel with AutoGen’s dynamic orchestration, providing a single foundation for agentic AI in production and research scenarios.​
 
-![alt text](image.png)
+![alt text](images/maf.png)
 
 Besides the capabilities on previous Frameworks, new main features include:
 - Built-in enterprise capabilities: observability via OpenTelemetry, security and identity through Microsoft Entra integration, compliance hooks, and support for long-running, durable agents.​
@@ -239,6 +239,83 @@ When you run the notebook, you'll see a sophisticated three-stage fraud detectio
 - Regulatory filing requirements and immediate action flags
 
 This interactive notebook demonstrates enterprise-grade fraud detection with real transaction analysis, AI-powered risk assessment, and audit-ready compliance documentation suitable for financial institutions.
+
+
+## Step 4: Using the DevUI
+
+This [DevUI](https://github.com/microsoft/agent-framework/tree/main/python/packages/devui) implementation provides a web-based interface for interacting with the Azure Trust Agents from Challenge 1, including individual agents and the complete fraud detection workflow.
+
+DevUI is a sample application that provides:
+
+- A web interface for testing agents and workflows
+- OpenAI-compatible API endpoints
+- Directory-based entity discovery
+- In-memory entity registration
+- Sample entity gallery
+
+> [!IMPORTANT]
+> DevUI is a **sample app** to help you get started with the Agent Framework. It is **not** intended for production use. For production, or for features beyond what is provided in this sample app, it is recommended that you build your own custom interface and API server using the Agent Framework SDK.
+
+
+#### Launch the DevUI App
+
+Launch all agents and workflow together:
+```bash
+cd challenge-1/devui
+python devui_launcher.py --mode all
+```
+Access at: http://localhost:8080
+
+You should be able to see a screen such as this one:
+
+![alt text](images/devui1.png)
+
+This pane shows you the `CustomerDataAgent` alone, not the complete workflow. Let's test it out:
+
+```
+Get data for customer CUST1005
+```
+
+We have asked for data from the CUST1005, and as per the definition of our agent, data comprises personal data from the customer, as well as past transactions:
+
+![alt text](images/devui2.png)
+
+On our right-hand side we can see all the events that were triggered by this agent, including the fetching from our CosmosDB using our function:
+ `function_call({"customer_id":"CUST1005"}`
+
+
+Perfect! Let's now test the Risk Analyser agent. At its genesis, the risk analyser can take *general* information about a transaction, and give us a structured output with a
+`Fraud risk score (0-100)`, `Risk level` and `Reason` from that transaction. On the upper left-hand side of your screen click on your Assets drop down, and click on `Risk Analyser Agent`:
+
+![alt text](images/devui3.png)
+
+Let's test it out with a new query. As our workflow is sequential, this risk analyser will not have information from a specific transaction, and therefore we cannot search by transaction_id. Before running the command, please notice how we are using the same thread. Let's test it out:
+
+```
+Evaluate risk for a $15,000 transaction to Iran by a new customer
+```
+
+You will see a response such as this one (It might not yield the exact *same*  result, as we are still working with a probabilistic model and not a rule-based one):
+
+![alt text](images/devui4.png)
+
+This is the result of providing some basic information (transaction amount, country and longevity of customer in the bank), and it will look inside our vector database to look for signs of fraud based on the `Anti-Money Laundry`, `Know your Customer`, and other rules present in our Vector Database and give back that score.
+
+As the third agent is dependant on the previous two, we will not run it individually. Let's go ahead and try out the full workflow we have created.
+
+![alt text](images/devui5.png)
+
+You can see now that we have the 3 agents in sequential workflow in a node-like architecture. Let's run our full workflow with our agents communicating with eachother. Let's click on `Configure and Run`.
+
+![alt text](devui6.png)
+
+Use the message "Analyse the risk of transaction" and leave the default value for TX2002. You will find the nodes who have run in green, the nodes still running in purple, and the ones that are still going to run in black.
+
+![alt text](images/devui7.png)
+
+You can find the result of the workflow on the bottom part of your screen in green. You can also find the events that have been run and its corresponding executors on the right-hand side. Don't worry, we will unpack the tracing on Challenge number 3.
+
+As a reminder, we are using this DevUI for development purposes only and to visualise what we are working on. From now on, we will be back to code!
 
 ## Conclusion 🎉
 

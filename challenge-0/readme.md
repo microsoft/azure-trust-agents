@@ -52,7 +52,7 @@ Resource deployment can take up to 10 minutes, afterwards you'll be able to find
 
 Go back to your `Azure Portal` and find your `Resource Group`that should by now contain WIP resources and look like this:
 
-[WIP]
+![alt text](image.png)
 
 ## 1.5 Let's retrieve the necessary keys
 After deploying the resources, you will need to configure the environment variables in the `.env` file. Double check you have logged in into your Azure account on the CLI. If that's settled, let's move into retrieving our keys. The `.env` file is a configuration file that contains the environment variables for the application. The `.env` file is automatically created by running the following command within the terminal in your Codespace.
@@ -73,6 +73,10 @@ When the script is finished, review the `.env` file to ensure that all the value
 The repo has an `.env.sample` file that shows the relevant environment variables that need to be configured in this project. The script should create a `.env` file that has these same variables _but populated with the right values_ for your Azure resources.
 
 If the file is not created, simply copy over `.env.sample` to `.env` - then populate those values manually from the respective Azure resource pages using the Azure Portal.
+
+> [!IMPORTANT]
+> DevUI is a **sample app** to help you get started with the Agent Framework. It is **not** intended for production use. For production, or for features beyond what is provided in this sample app, it is recommended that you build your own custom interface and API server using the Agent Framework SDK.
+
 
 > [!CAUTION]
 >For convenience we will use key-based authentication and public network access to resources in the hack. In real world implementations you should consider stronger authentication mechanisms and additional network security.
