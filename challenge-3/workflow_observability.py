@@ -2,12 +2,13 @@ import asyncio
 import os
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import Counter
 from typing_extensions import Never
-from agent_framework import WorkflowBuilder, WorkflowContext, WorkflowOutputEvent, executor, ChatAgent
-from agent_framework.azure import AzureAIAgentClient
+from agent_framework import WorkflowBuilder, WorkflowContext, WorkflowOutputEvent, executor, ChatAgent, HostedMCPTool
+from agent_framework.azure import AzureAIAgentClient, AzureOpenAIResponsesClient
 from azure.identity.aio import AzureCliCredential
+from azure.identity import AzureCliCredential as SyncAzureCliCredential
 from azure.cosmos import CosmosClient
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -64,6 +65,7 @@ class ComplianceAuditResponse(BaseModel):
     audit_report_id: str
     audit_conclusion: str
     compliance_rating: str
+    risk_score: float = 0.0
     risk_factors_identified: list = []
     compliance_concerns: list = []
     recommendations: list = []
@@ -71,6 +73,8 @@ class ComplianceAuditResponse(BaseModel):
     requires_regulatory_filing: bool = False
     transaction_id: str
     status: str
+    mcp_tool_used: bool = False
+    mcp_actions: list = []
 
 # Cosmos DB helper functions with telemetry decorators
 @cosmos_instrumentation.instrument_transaction_get
@@ -130,11 +134,52 @@ def parse_risk_analysis_result(risk_analysis_text: str) -> dict:
         
         text_lower = risk_analysis_text.lower()
         
-        # Extract risk score
+        # Extract risk score - try multiple patterns
         risk_score_pattern = r'risk\s*score[:\s]*(\d+(?:\.\d+)?)'
         score_match = re.search(risk_score_pattern, text_lower)
         if score_match:
             analysis_data["parsed_elements"]["risk_score"] = float(score_match.group(1))
+        else:
+            # If no explicit score found, calculate based on content analysis
+            calculated_score = 20.0  # Start with baseline low-medium risk
+            
+            # High-risk countries (moderate increase, not overwhelming)
+            if any(country in text_lower for country in ['russia', 'russian', 'iran', 'iranian', 'north korea', 'syria', 'yemen']):
+                calculated_score += 40  # Was 80, now more moderate
+            elif "high-risk country" in text_lower or "high risk country" in text_lower:
+                calculated_score += 35  # Was 75, now more moderate
+            elif "sanctions" in text_lower and not any(phrase in text_lower for phrase in ["no sanctions", "sanctions check clear"]):
+                calculated_score += 45  # Was 85, now more moderate
+            
+            # Large amounts increase risk moderately
+            if ("large amount" in text_lower or "high amount" in text_lower) and not any(phrase in text_lower for phrase in ["below", "under", "not large"]):
+                calculated_score += 15  # Was 20, slightly reduced
+                
+            # Suspicious patterns (moderate increase)
+            if "suspicious" in text_lower and not any(phrase in text_lower for phrase in ["no suspicious", "not suspicious", "no triggering"]):
+                calculated_score += 20  # Was 30, now more moderate
+                
+            # New account or low trust factors
+            if "new account" in text_lower or "low.*trust" in text_lower:
+                calculated_score += 10
+                
+            # Past fraud history
+            if "past fraud" in text_lower or "fraud history" in text_lower:
+                calculated_score += 25
+            
+            # Final recommendation adjustments (but don't override calculated scores too aggressively)
+            if "block" in text_lower or "reject" in text_lower:
+                calculated_score = max(calculated_score, 75)  # Was 80, slightly reduced
+            elif "high risk" in text_lower and not any(phrase in text_lower for phrase in ["not high risk", "no high risk"]):
+                calculated_score = max(calculated_score, 65)  # New moderate adjustment
+            elif "medium risk" in text_lower:
+                calculated_score = max(calculated_score, 45)  # Was 60, adjusted for medium range
+            elif "low risk" in text_lower or "approve" in text_lower:
+                calculated_score = min(calculated_score, 30)  # Cap low risk transactions
+                
+            # Cap at 100 and ensure minimum
+            calculated_score = max(10.0, min(100.0, calculated_score))  # Ensure range 10-100
+            analysis_data["parsed_elements"]["risk_score"] = calculated_score
         
         # Extract risk level
         risk_level_pattern = r'risk\s*level[:\s]*(\w+)'
@@ -142,6 +187,36 @@ def parse_risk_analysis_result(risk_analysis_text: str) -> dict:
         if level_match:
             analysis_data["parsed_elements"]["risk_level"] = level_match.group(1).upper()
         
+        # Extract transaction ID
+        tx_pattern = r'transaction[:\s]*([A-Z0-9]+)'
+        tx_match = re.search(tx_pattern, risk_analysis_text)
+        if tx_match:
+            analysis_data["parsed_elements"]["transaction_id"] = tx_match.group(1)
+        
+        # Extract key risk factors mentioned (only if they indicate actual risk)
+        risk_factors = []
+        
+        # Only flag high-risk country if it's actually mentioned as a concern
+        if ("high-risk country" in text_lower or "high risk country" in text_lower) and not any(phrase in text_lower for phrase in ["not in", "no high-risk", "not high-risk", "low-risk"]):
+            risk_factors.append("HIGH_RISK_JURISDICTION")
+            
+        # Only flag large amounts if mentioned as problematic
+        if ("large amount" in text_lower or "high amount" in text_lower) and not any(phrase in text_lower for phrase in ["below", "under", "not large", "not high"]):
+            risk_factors.append("UNUSUAL_AMOUNT")
+            
+        # Only flag suspicious if it's a concern, not if it says "no suspicious"
+        if "suspicious" in text_lower and not any(phrase in text_lower for phrase in ["no suspicious", "not suspicious", "no triggering"]):
+            risk_factors.append("SUSPICIOUS_PATTERN")
+            
+        # Only flag sanctions if there's an actual concern, not if it says "no sanctions"
+        if "sanction" in text_lower and any(phrase in text_lower for phrase in ["sanctions concern", "sanctions flag", "sanctions match", "sanctions risk"]) and not any(phrase in text_lower for phrase in ["no sanctions", "sanctions check clear", "no sanctions flag"]):
+            risk_factors.append("SANCTIONS_CONCERN")
+            
+        # Only flag frequency issues if mentioned as problematic
+        if ("frequent" in text_lower or "unusual frequency" in text_lower) and not any(phrase in text_lower for phrase in ["not frequent", "normal frequency"]):
+            risk_factors.append("FREQUENCY_ANOMALY")
+        
+        analysis_data["parsed_elements"]["risk_factors"] = risk_factors
         return analysis_data
         
     except Exception as e:
@@ -216,7 +291,7 @@ def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_typ
                 "compliance_rating": compliance_rating,
                 "requires_immediate_action": requires_immediate_action,
                 "requires_regulatory_filing": requires_regulatory_filing,
-                "next_review_date": (datetime.now().replace(day=datetime.now().day + 30)).isoformat()
+                "next_review_date": (datetime.now().replace(day=1) + timedelta(days=32)).replace(day=1).isoformat()
             },
             "source_analysis": {
                 "risk_analysis_summary": risk_analysis_text[:500] + "..." if len(risk_analysis_text) > 500 else risk_analysis_text,
@@ -504,12 +579,20 @@ Provide a structured risk assessment with clear regulatory justification.
                     if "IRAN" in result_text.upper() or "SANCTIONS" in result_text.upper():
                         compliance_notes = "Sanctions compliance review required"
                     
-                    # Calculate risk score for metrics
-                    risk_score_value = 0.5  # Default medium risk
-                    if recommendation == "BLOCK":
-                        risk_score_value = 0.9
-                    elif recommendation == "APPROVE":
-                        risk_score_value = 0.1
+                    # Calculate detailed risk score using the same parsing logic as compliance report
+                    parsed_risk_data = parse_risk_analysis_result(result_text)
+                    
+                    if "parsed_elements" in parsed_risk_data and "risk_score" in parsed_risk_data["parsed_elements"]:
+                        # Use the detailed parsed risk score (0-100) and convert to 0-1 scale
+                        detailed_score = parsed_risk_data["parsed_elements"]["risk_score"]
+                        risk_score_value = detailed_score / 100.0  # Convert 0-100 to 0-1 scale
+                    else:
+                        # Fallback to simple calculation if parsing fails
+                        risk_score_value = 0.5  # Default medium risk
+                        if recommendation == "BLOCK":
+                            risk_score_value = 0.9
+                        elif recommendation == "APPROVE":
+                            risk_score_value = 0.1
                     
                     # Record business metrics using telemetry manager
                     telemetry.record_risk_score(risk_score_value, customer_response.transaction_id, recommendation)
@@ -559,11 +642,11 @@ async def compliance_report_executor(
     risk_response: RiskAnalysisResponse,
     ctx: WorkflowContext[Never, ComplianceAuditResponse]
 ) -> None:
-    """Compliance Report Executor - generates compliance audit reports."""
+    """Compliance Report Executor using OpenAI Responses Client that generates audit reports from risk analysis results."""
     
     with telemetry.create_processing_span(
         executor_id="compliance_report_executor",
-        executor_type="ComplianceReport",
+        executor_type="ComplianceReport", 
         message_type="RiskAnalysisResponse"
     ) as span:
         
@@ -578,104 +661,53 @@ async def compliance_report_executor(
         
         try:
             # Configuration
-            project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
+            mcp_endpoint = os.environ.get("MCP_SERVER_ENDPOINT")
+            mcp_subscription_key = os.environ.get("APIM_SUBSCRIPTION_KEY")
+            azure_openai_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
             model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
-            COMPLIANCE_REPORT_AGENT_ID = os.getenv("COMPLIANCE_REPORT_AGENT_ID")
             
-            span.add_event("Starting compliance report generation")
+            span.add_event("Starting MCP-enabled compliance report generation")
             
-            # If no specific compliance agent, generate report locally
-            if not COMPLIANCE_REPORT_AGENT_ID:
-                span.add_event("Using local compliance report generation")
+            # Create OpenAI Responses Client-based compliance agent
+            async with ChatAgent(
+                chat_client=AzureOpenAIResponsesClient(
+                    credential=SyncAzureCliCredential(),
+                    endpoint=azure_openai_endpoint,
+                    deployment_name=model_deployment_name
+                ),
+                name="ComplianceReportAgent",
+                instructions="""You are a Compliance Report Agent specialized in generating formal audit reports based on risk analysis findings and transaction data.
+
+Your primary responsibilities include:
+- Analyzing transaction risk summaries and generating compliance audit reports
+- Creating appropriate fraud alerts through the MCP server when compliance violations are detected
+- Determining correct severity levels (LOW, MEDIUM, HIGH, CRITICAL) for compliance issues
+- Setting proper alert status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)
+- Recommending actions (ALLOW, BLOCK, MONITOR, INVESTIGATE) based on compliance analysis
+- Generating executive-level audit summaries and compliance dashboards
+- Ensuring regulatory compliance and audit trail documentation
+
+When generating compliance reports:
+1. Parse risk analysis data to extract key compliance indicators
+2. Assess regulatory compliance based on transaction patterns and risk factors
+3. Create formal audit reports with clear findings and recommendations
+4. Generate fraud alerts for any transactions that violate compliance thresholds
+5. Provide executive summaries for management review
+
+Always create detailed reports with proper risk assessments, regulatory implications, and clear audit trails.""",
+                tools=HostedMCPTool(
+                    name="Fraud Alert Manager MCP",
+                    url=mcp_endpoint,
+                    description="Manages fraud alerts and escalations for financial transactions",
+                    approval_mode="never_require",
+                    headers={
+                        "Ocp-Apim-Subscription-Key": mcp_subscription_key
+                    } if mcp_subscription_key else {}
+                ),
+            ) as agent:
                 
-                # Generate audit report using local functions
-                audit_report = generate_audit_report_from_risk_analysis(
-                    risk_analysis_text=risk_response.risk_analysis,
-                    report_type="TRANSACTION_AUDIT"
-                )
-                
-                if "error" in audit_report:
-                    span.set_attribute("executor.success", False)
-                    span.set_attribute("executor.error", audit_report['error'])
-                    
-                    error_result = ComplianceAuditResponse(
-                        audit_report_id="ERROR_REPORT",
-                        audit_conclusion=f"Error generating audit report: {audit_report['error']}",
-                        compliance_rating="ERROR",
-                        transaction_id=risk_response.transaction_id,
-                        status="ERROR"
-                    )
-                    await ctx.yield_output(error_result)
-                    return
-                
-                # Convert audit report to response model
-                final_result = ComplianceAuditResponse(
-                    audit_report_id=audit_report["audit_report_id"],
-                    audit_conclusion=audit_report["executive_summary"]["audit_conclusion"],
-                    compliance_rating=audit_report["compliance_status"]["compliance_rating"],
-                    risk_factors_identified=audit_report["detailed_findings"]["risk_factors_identified"],
-                    compliance_concerns=audit_report["detailed_findings"]["compliance_concerns"],
-                    recommendations=audit_report["detailed_findings"]["recommendations"],
-                    requires_immediate_action=audit_report["compliance_status"]["requires_immediate_action"],
-                    requires_regulatory_filing=audit_report["compliance_status"]["requires_regulatory_filing"],
-                    transaction_id=risk_response.transaction_id,
-                    status="SUCCESS"
-                )
-                
-                # Record compliance decision metric
-                telemetry.record_compliance_decision(
-                    final_result.compliance_rating, 
-                    risk_response.transaction_id,
-                    immediate_action=str(final_result.requires_immediate_action)
-                )
-                
-                # Send business event
-                send_business_event("fraud_detection.compliance.completed", {
-                    "transaction_id": risk_response.transaction_id,
-                    "compliance_rating": final_result.compliance_rating,
-                    "immediate_action": str(final_result.requires_immediate_action),
-                    "regulatory_filing": str(final_result.requires_regulatory_filing),
-                    "audit_report_id": final_result.audit_report_id
-                })
-                
-                span.set_attributes({
-                    "compliance.rating": final_result.compliance_rating,
-                    "compliance.immediate_action": final_result.requires_immediate_action,
-                    "compliance.regulatory_filing": final_result.requires_regulatory_filing,
-                    "executor.success": True
-                })
-                
-                span.add_event("Compliance report generated successfully", {
-                    "report_id": final_result.audit_report_id,
-                    "compliance_rating": final_result.compliance_rating
-                })
-                
-                await ctx.yield_output(final_result)
-                return
-            
-            # Use Azure AI agent for compliance reporting (if configured)
-            span.add_event("Using AI-powered compliance report generation", {
-                "agent_id": COMPLIANCE_REPORT_AGENT_ID
-            })
-            
-            async with AzureCliCredential() as credential:
-                compliance_client = AzureAIAgentClient(
-                    project_endpoint=project_endpoint,
-                    model_deployment_name=model_deployment_name,
-                    async_credential=credential,
-                    agent_id=COMPLIANCE_REPORT_AGENT_ID
-                )
-                
-                async with compliance_client as client:
-                    compliance_agent = ChatAgent(
-                        chat_client=client,
-                        model_id=model_deployment_name,
-                        store=True
-                    )
-                    
-                    # Create compliance report prompt
-                    compliance_prompt = f"""
-Based on the following Risk Analyser Agent output, please generate a comprehensive audit report:
+                # Create comprehensive compliance report prompt with explicit MCP usage
+                compliance_prompt = f"""Generate a comprehensive compliance audit report based on this risk analysis:
 
 Risk Analysis Result:
 {risk_response.risk_analysis}
@@ -686,81 +718,190 @@ Recommendation: {risk_response.recommendation}
 Risk Factors: {risk_response.risk_factors}
 Compliance Notes: {risk_response.compliance_notes}
 
-Please provide:
-1. Formal audit report with compliance ratings based on the risk analysis
-2. Specific required actions and recommendations derived from the findings
-3. Executive summary of key audit conclusions
-4. Compliance status and regulatory requirements
+Please provide a structured audit report including:
+1. Formal audit report with compliance ratings
+2. Risk factor analysis and regulatory implications
+3. Executive summary of findings
+4. CREATE A FRAUD ALERT using the MCP tool for any compliance violations detected
+5. Recommendations for management action
+6. Compliance status and regulatory filing requirements
 
-Focus on translating the risk analysis into clear audit findings and actionable recommendations for management review.
-"""
+IMPORTANT: If you detect any compliance issues, risk violations, or suspicious patterns, 
+you MUST create a fraud alert using the Fraud Alert Manager MCP tool with appropriate:
+- Severity level (LOW, MEDIUM, HIGH, CRITICAL)
+- Status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)  
+- Action (ALLOW, BLOCK, MONITOR, INVESTIGATE)
+
+Additionally, MUST USE MCP TOOL: Please retrieve ALL existing fraud alerts using the 
+Fraud Alert Manager MCP tool to include in your compliance analysis.
+
+Focus on regulatory compliance, audit documentation, and actionable recommendations. Return your response in a structured format that I can parse."""
+                
+                start_time = asyncio.get_event_loop().time()
+                result = await agent.run(compliance_prompt)
+                end_time = asyncio.get_event_loop().time()
+                
+                processing_time = end_time - start_time
+                span.set_attribute("ai.compliance_processing_time", processing_time)
+                
+                result_text = result.text if result and hasattr(result, 'text') else "No response from compliance agent"
+                
+                # Check for MCP tool usage indicators in the AI response
+                mcp_tool_used = False
+                mcp_actions = []
+                
+                if result_text:
+                    # Look for common MCP tool usage patterns in the response
+                    if any(keyword in result_text.lower() for keyword in ['createalert', 'create alert', 'fraud alert created', 'alert id', 'alert created', 'new alert']):
+                        mcp_tool_used = True
+                        mcp_actions.append("Alert Creation")
                     
-                    start_time = asyncio.get_event_loop().time()
-                    result = await compliance_agent.run(compliance_prompt)
-                    end_time = asyncio.get_event_loop().time()
+                    if any(keyword in result_text.lower() for keyword in ['getallalerts', 'get all alerts', 'existing alerts', 'retrieved alerts', 'found alerts', 'alert retrieval']):
+                        mcp_tool_used = True
+                        mcp_actions.append("Alert Retrieval")
                     
-                    processing_time = end_time - start_time
-                    span.set_attribute("ai.compliance_processing_time", processing_time)
+                    # Check for general MCP tool usage indicators
+                    if any(keyword in result_text.lower() for keyword in ['mcp tool', 'fraud alert manager', 'tool used', 'using tool']):
+                        mcp_tool_used = True
+                        if "Alert Creation" not in mcp_actions and "Alert Retrieval" not in mcp_actions:
+                            mcp_actions.append("General MCP Usage")
+                
+                # Generate structured audit report locally to ensure consistency
+                local_audit = generate_audit_report_from_risk_analysis(risk_response.risk_analysis)
+                
+                if "error" not in local_audit:
+                    # Extract risk score from the correct location in the audit report
+                    risk_score = 0.0
+                    if "source_analysis" in local_audit and "parsed_elements" in local_audit["source_analysis"]:
+                        parsed_elements = local_audit["source_analysis"]["parsed_elements"]
+                        risk_score = parsed_elements.get("risk_score", 0.0)
                     
-                    result_text = result.text if result and hasattr(result, 'text') else "No response from compliance agent"
+                    # Combine AI-generated insights with structured local audit
+                    final_result = ComplianceAuditResponse(
+                        audit_report_id=local_audit["audit_report_id"],
+                        audit_conclusion=f"{local_audit['executive_summary']['audit_conclusion']} | AI Analysis: {result_text[:300]}...",
+                        compliance_rating=local_audit["compliance_status"]["compliance_rating"],
+                        risk_score=risk_score,
+                        risk_factors_identified=local_audit["detailed_findings"]["risk_factors_identified"],
+                        compliance_concerns=local_audit["detailed_findings"]["compliance_concerns"],
+                        recommendations=local_audit["detailed_findings"]["recommendations"],
+                        requires_immediate_action=local_audit["compliance_status"]["requires_immediate_action"],
+                        requires_regulatory_filing=local_audit["compliance_status"]["requires_regulatory_filing"],
+                        transaction_id=risk_response.transaction_id,
+                        status="SUCCESS",
+                        mcp_tool_used=mcp_tool_used,
+                        mcp_actions=mcp_actions
+                    )
+                else:
+                    # Fallback using AI response only
+                    final_result = ComplianceAuditResponse(
+                        audit_report_id=f"AI_AUDIT_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                        audit_conclusion=result_text[:500] if len(result_text) > 500 else result_text,
+                        compliance_rating="AI_GENERATED",
+                        risk_score=0.0,
+                        transaction_id=risk_response.transaction_id,
+                        status="SUCCESS",
+                        mcp_tool_used=mcp_tool_used,
+                        mcp_actions=mcp_actions
+                    )
+                
+                # Record compliance decision metric with MCP usage
+                telemetry.record_compliance_decision(
+                    final_result.compliance_rating,
+                    risk_response.transaction_id,
+                    immediate_action=str(final_result.requires_immediate_action),
+                    mcp_enabled=str(mcp_tool_used)
+                )
+                
+                # Send business event with MCP information
+                send_business_event("fraud_detection.compliance.completed", {
+                    "transaction_id": risk_response.transaction_id,
+                    "compliance_rating": final_result.compliance_rating,
+                    "immediate_action": str(final_result.requires_immediate_action),
+                    "regulatory_filing": str(final_result.requires_regulatory_filing),
+                    "audit_report_id": final_result.audit_report_id,
+                    "mcp_tool_used": str(mcp_tool_used),
+                    "mcp_actions": ",".join(mcp_actions) if mcp_actions else ""
+                })
+                
+                span.set_attributes({
+                    "compliance.rating": final_result.compliance_rating,
+                    "compliance.immediate_action": final_result.requires_immediate_action,
+                    "compliance.regulatory_filing": final_result.requires_regulatory_filing,
+                    "mcp.tool_used": mcp_tool_used,
+                    "mcp.actions_count": len(mcp_actions),
+                    "executor.success": True,
+                    "ai.enhanced": True
+                })
+                
+                span.add_event("MCP-enabled compliance report generated successfully", {
+                    "report_id": final_result.audit_report_id,
+                    "compliance_rating": final_result.compliance_rating,
+                    "mcp_tool_used": str(mcp_tool_used),
+                    "processing_time": processing_time
+                })
+                
+                await ctx.yield_output(final_result)
+            
+        except Exception as e:
+            # Fallback to local audit generation if OpenAI client fails
+            try:
+                span.add_event("Falling back to local audit generation due to error", {
+                    "error": str(e)
+                })
+                
+                local_audit = generate_audit_report_from_risk_analysis(risk_response.risk_analysis)
+                
+                if "error" not in local_audit:
+                    # Extract risk score from the correct location in the audit report
+                    fallback_risk_score = 0.0
+                    if "source_analysis" in local_audit and "parsed_elements" in local_audit["source_analysis"]:
+                        parsed_elements = local_audit["source_analysis"]["parsed_elements"]
+                        fallback_risk_score = parsed_elements.get("risk_score", 0.0)
                     
-                    # Generate structured audit report locally and combine with AI response
-                    local_audit = generate_audit_report_from_risk_analysis(risk_response.risk_analysis)
-                    
-                    if "error" not in local_audit:
-                        final_result = ComplianceAuditResponse(
-                            audit_report_id=local_audit["audit_report_id"],
-                            audit_conclusion=f"{local_audit['executive_summary']['audit_conclusion']} (AI Enhanced: {result_text[:200]}...)",
-                            compliance_rating=local_audit["compliance_status"]["compliance_rating"],
-                            risk_factors_identified=local_audit["detailed_findings"]["risk_factors_identified"],
-                            compliance_concerns=local_audit["detailed_findings"]["compliance_concerns"],
-                            recommendations=local_audit["detailed_findings"]["recommendations"],
-                            requires_immediate_action=local_audit["compliance_status"]["requires_immediate_action"],
-                            requires_regulatory_filing=local_audit["compliance_status"]["requires_regulatory_filing"],
-                            transaction_id=risk_response.transaction_id,
-                            status="SUCCESS"
-                        )
-                    else:
-                        # Fallback if local audit fails
-                        final_result = ComplianceAuditResponse(
-                            audit_report_id=f"AI_AUDIT_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                            audit_conclusion=result_text[:500] if len(result_text) > 500 else result_text,
-                            compliance_rating="AI_GENERATED",
-                            transaction_id=risk_response.transaction_id,
-                            status="SUCCESS"
-                        )
-                    
-                    # Record compliance decision metric
-                    telemetry.record_compliance_decision(
-                        final_result.compliance_rating,
-                        risk_response.transaction_id,
-                        immediate_action=str(final_result.requires_immediate_action),
-                        ai_enhanced="true"
+                    fallback_result = ComplianceAuditResponse(
+                        audit_report_id=local_audit["audit_report_id"],
+                        audit_conclusion=f"{local_audit['executive_summary']['audit_conclusion']} (Fallback Mode)",
+                        compliance_rating=local_audit["compliance_status"]["compliance_rating"],
+                        risk_score=fallback_risk_score,
+                        risk_factors_identified=local_audit["detailed_findings"]["risk_factors_identified"],
+                        compliance_concerns=local_audit["detailed_findings"]["compliance_concerns"],
+                        recommendations=local_audit["detailed_findings"]["recommendations"],
+                        requires_immediate_action=local_audit["compliance_status"]["requires_immediate_action"],
+                        requires_regulatory_filing=local_audit["compliance_status"]["requires_regulatory_filing"],
+                        transaction_id=risk_response.transaction_id,
+                        status="SUCCESS_FALLBACK",
+                        mcp_tool_used=False,
+                        mcp_actions=[]
                     )
                     
                     span.set_attributes({
-                        "compliance.rating": final_result.compliance_rating,
-                        "compliance.immediate_action": final_result.requires_immediate_action,
-                        "compliance.regulatory_filing": final_result.requires_regulatory_filing,
+                        "compliance.rating": fallback_result.compliance_rating,
                         "executor.success": True,
-                        "ai.enhanced": True
+                        "executor.fallback": True
                     })
                     
-                    await ctx.yield_output(final_result)
-        
-        except Exception as e:
-            span.set_attribute("executor.success", False)
-            span.set_attribute("executor.error", str(e))
-            span.record_exception(e)
-            
-            error_result = ComplianceAuditResponse(
-                audit_report_id="ERROR_REPORT",
-                audit_conclusion=f"Error in compliance reporting: {str(e)}",
-                compliance_rating="ERROR",
-                transaction_id=risk_response.transaction_id if risk_response else "Unknown",
-                status="ERROR"
-            )
-            await ctx.yield_output(error_result)
+                    await ctx.yield_output(fallback_result)
+                else:
+                    raise Exception(f"Both AI and fallback methods failed: {str(e)}")
+                    
+            except Exception as fallback_error:
+                span.set_attribute("executor.success", False)
+                span.set_attribute("executor.error", str(e))
+                span.set_attribute("fallback.error", str(fallback_error))
+                span.record_exception(e)
+                
+                error_result = ComplianceAuditResponse(
+                    audit_report_id="ERROR_REPORT",
+                    audit_conclusion=f"Error in compliance reporting: {str(e)} | Fallback error: {str(fallback_error)}",
+                    compliance_rating="ERROR",
+                    risk_score=0.0,
+                    transaction_id=risk_response.transaction_id if risk_response else "Unknown",
+                    status="ERROR",
+                    mcp_tool_used=False,
+                    mcp_actions=[]
+                )
+                await ctx.yield_output(error_result)
 
 async def run_fraud_detection_workflow():
     """Execute the fraud detection workflow with comprehensive observability."""
@@ -850,13 +991,33 @@ async def main():
                     "result.audit_report_id": result.audit_report_id,
                     "result.transaction_id": result.transaction_id,
                     "result.compliance_rating": result.compliance_rating,
+                    "result.risk_score": result.risk_score,
                     "result.requires_immediate_action": result.requires_immediate_action,
-                    "result.requires_regulatory_filing": result.requires_regulatory_filing
+                    "result.requires_regulatory_filing": result.requires_regulatory_filing,
+                    "result.mcp_tool_used": result.mcp_tool_used,
+                    "result.mcp_actions_count": len(result.mcp_actions)
                 })
                 
                 print(f"\n✅ Workflow completed successfully!")
                 print(f"📋 Audit Report ID: {result.audit_report_id}")
                 print(f"🔢 Transaction: {result.transaction_id}")
+                print(f"📊 Status: {result.status}")
+                print(f"🔍 Compliance Rating: {result.compliance_rating}")
+                print(f"📈 Risk Score: {result.risk_score:.2f}")
+                print(f"📄 Conclusion: {result.audit_conclusion[:100]}...")
+                
+                # Display MCP Tool Usage Information
+                if result.mcp_tool_used:
+                    print(f"🔧 MCP Tool Used: ✅ YES")
+                    if result.mcp_actions:
+                        print(f"🔧 MCP Actions: {', '.join(result.mcp_actions)}")
+                else:
+                    print(f"🔧 MCP Tool Used: ❌ NO")
+                
+                if result.requires_immediate_action:
+                    print("⚠️  IMMEDIATE ACTION REQUIRED")
+                if result.requires_regulatory_filing:
+                    print("📋 REGULATORY FILING REQUIRED")
                 
                 main_span.add_event("Results displayed successfully")
             else:

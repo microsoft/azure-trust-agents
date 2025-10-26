@@ -208,11 +208,26 @@ Your plot should be looking something like this:
 
 ![alt text](images/kustoq1.png)
 
+
+Let's have a look at the recent risk scores in detail:
+```kusto
+traces  
+| where timestamp > ago(2h)  
+| where message contains "business_event.fraud_detection.risk.assessed"
+| extend 
+    risk_score = todouble(customDimensions.["risk_score"]),
+    recommendation = tostring(customDimensions.["recommendation"]),
+    transaction_id = tostring(customDimensions.["transaction_id"])
+| where isnotnull(risk_score)
+| project timestamp, transaction_id, risk_score, recommendation
+| order by timestamp desc
+```
+
 Now, let's create a pie chart with the risk scores that our batch data processing has provided:
 
 ```kusto
 traces  
-| where timestamp > ago(7d)
+| where timestamp > ago(2h)  // Look at recent data only
 | where message contains "business_event.fraud_detection.risk.assessed"
 | extend 
     risk_score = todouble(customDimensions.["risk_score"]),
@@ -221,17 +236,15 @@ traces
 | where isnotnull(risk_score)
 | summarize Count = count() by 
     RiskBucket = case(
-        risk_score < 0.3, "Low Risk (0-0.3)",
-        risk_score < 0.7, "Medium Risk (0.3-0.7)", 
-        "High Risk (0.7-1.0)"
-    ),
-    Recommendation = recommendation
-| render piechart title="Fraud Risk Score Distribution"
+        risk_score < 0.4, "Low Risk (0-40%)",
+        risk_score < 0.8, "Medium Risk (40-80%)", 
+        "High Risk (80-100%)"
+    )
+| render piechart title="Risk Distribution"
 ```
 You should be getting a plot similar to the following one:
 
-![alt text](images/image.png)
-
+![alt text](images/kustql2.png)
 
 **4. Build your Monitoring Workbook**
 

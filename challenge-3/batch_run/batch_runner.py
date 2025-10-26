@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple Batch Runner for Fraud Detection
-Quick way to generate multiple transactions for observability testing
+Simple Batch Runner for Fraud Detection with MCP Integration
+Quick way to generate multiple transactions for observability and MCP tool testing
 """
 
 import asyncio

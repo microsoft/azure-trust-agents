@@ -63,11 +63,19 @@ async def run_multiple_transactions(num_transactions=10, delay_between=2):
                 print(f"✅ Completed: {result.audit_report_id}")
                 print(f"⏱️  Processing time: {processing_time:.2f}s")
                 print(f"📋 Compliance: {result.compliance_rating}")
+                print(f"📊 Risk Score: {result.risk_score:.2f}")
+                
+                # Display MCP information
+                if hasattr(result, 'mcp_tool_used') and result.mcp_tool_used:
+                    print(f"🔧 MCP Tools Used: {', '.join(result.mcp_actions) if result.mcp_actions else 'Yes'}")
                 
                 results.append({
                     "transaction_id": transaction_id,
                     "audit_report_id": result.audit_report_id,
                     "compliance_rating": result.compliance_rating,
+                    "risk_score": getattr(result, 'risk_score', 0.0),
+                    "mcp_tool_used": getattr(result, 'mcp_tool_used', False),
+                    "mcp_actions": getattr(result, 'mcp_actions', []),
                     "processing_time": processing_time,
                     "status": "SUCCESS"
                 })
@@ -118,10 +126,43 @@ async def run_multiple_transactions(num_transactions=10, delay_between=2):
             count = compliance_ratings.count(rating)
             print(f"   {rating}: {count} transactions")
     
+    # MCP usage statistics
+    mcp_usage = [r.get("mcp_tool_used", False) for r in results if r.get("status") == "SUCCESS"]
+    if mcp_usage:
+        mcp_used_count = sum(mcp_usage)
+        print(f"\n🔧 MCP Tool Usage:")
+        print(f"   - MCP tools used: {mcp_used_count}/{len(mcp_usage)} transactions ({(mcp_used_count/len(mcp_usage)*100):.1f}%)")
+        
+        # MCP action breakdown
+        all_actions = []
+        for r in results:
+            if r.get("mcp_actions"):
+                all_actions.extend(r["mcp_actions"])
+        
+        if all_actions:
+            print("   - MCP Actions performed:")
+            action_counts = {}
+            for action in all_actions:
+                action_counts[action] = action_counts.get(action, 0) + 1
+            for action, count in action_counts.items():
+                print(f"     • {action}: {count} times")
+    
+    # Risk score analytics
+    risk_scores = [r.get("risk_score", 0) for r in results if r.get("status") == "SUCCESS" and r.get("risk_score")]
+    if risk_scores:
+        avg_risk = sum(risk_scores) / len(risk_scores)
+        max_risk = max(risk_scores)
+        min_risk = min(risk_scores)
+        print(f"\n📊 Risk Score Analytics:")
+        print(f"   - Average Risk Score: {avg_risk:.2f}")
+        print(f"   - Highest Risk Score: {max_risk:.2f}")
+        print(f"   - Lowest Risk Score: {min_risk:.2f}")
+    
     print("\n🎯 Application Insights Data:")
     print(f"   - {len(results)} transaction traces generated")
     print(f"   - {successful * 3} business events logged (transaction.started, risk.assessed, compliance.completed)")
     print(f"   - Multiple risk scores and compliance decisions for analysis")
+    print(f"   - MCP tool usage metrics and action tracking")
     print(f"   - Performance metrics across {num_transactions} workflows")
     
     print("\n📊 Dashboard Ready!")
@@ -215,7 +256,8 @@ async def business_day_simulation(transactions=50):
         try:
             result = await run_fraud_detection_workflow_with_request(request)
             if result:
-                print(f"✅ {result.compliance_rating}")
+                mcp_indicator = "🔧" if getattr(result, 'mcp_tool_used', False) else "📋"
+                print(f"✅ {mcp_indicator} {result.compliance_rating} (Risk: {getattr(result, 'risk_score', 0):.1f})")
             else:
                 print("❌ Failed")
         except Exception as e:
