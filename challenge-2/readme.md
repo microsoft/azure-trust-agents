@@ -138,9 +138,9 @@ As this is our last agent, and we are creating it individually, we will use the 
 
 ### Define the MCP as a Tool in the Agent
 
-Now, it is time to configure a simple ChatAgent that uses the MCP server. 
+Now, it is time to configure a simple Agent that uses the MCP server. 
 
-The agent has been implemented for you in the `challenge-2/agents/fraud_alert_agent.py` file.
+The agent has been implemented for you in the `challenge-2/agents/compliance_report_responses_client.py` file.
 
 We have left a placeholder in the code so you can add the MCP server as a tool. In line 99, find:
 

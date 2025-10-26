@@ -284,7 +284,7 @@ For a run of 15 transactions, I can see 180 traces.
 3. Click on **See all data in the last 4h**
 4. On the top of your page, select your **Event types = Trace**
 
-In our use case, for each transaction processed (unique trace ID), we will have 12 traces. In the example below, for a run of 15 transactions, I can see 180 traces.
+In our use case, for each transaction processed (unique trace ID), we will have 12 traces. In the example below, for a run of 15 transactions, I can see 180 traces
 
 ![alt text](images/tracing1.png)
 
