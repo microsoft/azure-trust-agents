@@ -4,7 +4,7 @@
 
 In this challenge, we will build a complete fraud detection system by creating three specialized Azure AI Agents and orchestrating them into a seamless workflow. We'll develop a **Customer Data Agent** for transaction retrieval, a **Risk Analyzer Agent** for compliance assessment, and a **Compliance Report Agent** for audit documentation. Finally, we'll connect these agents by creating a Microsoft's Agent Framework [Workflow](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/sequential?pivots=programming-language-python), allowing us to create an enterprise-grade fraud detection pipeline.
 
-This comprehensive guide covers **step-by-step agent creation** with detailed instructions for building each specialized agent, explores the **hybrid approach** that balances rule-based regulatory compliance with AI-powered pattern recognition, demonstrates **sequential workflow orchestration** to connect agents into a cohesive pipeline, provides **complete examples** of what each agent produces in the fraud detection process, and offers **enterprise integration guidance** for extending the system with Model Context Protocol (MCP) for real-world deployment.
+This comprehensive guide covers **step-by-step agent creation** with detailed instructions for building each specialized agent, explores the **hybrid approach** that balances rule-based regulatory compliance with AI-powered pattern recognition, demonstrates **sequential workflow orchestration** to connect agents into a cohesive pipeline and provides **complete examples** of what each agent produces in the fraud detection process.
 
 The orchestration will follow this architecture:
 
@@ -34,6 +34,8 @@ For a more detailed integration, these are the set of core concepts that complet
 - [**Edges**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/edges?pivots=programming-language-csharp): Edges define how messages move between executors, enabling conditional routing, branching, fan-in, and fan-out message flows.
 - [**Workflows:**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/workflows?pivots=programming-language-csharp) A workflow is the orchestrated graph of executors and edges that manages message routing, execution order, and lifecycle during processing.
 - [**Events:**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/events?pivots=programming-language-csharp) Events provide real-time observability into workflow execution by emitting structured signals about workflow, executor, and message processing states.
+
+Please take a moment to review these concepts, as they will be important in the next chellenges.
 
 ## Step-by-Step Instructions
 
@@ -307,15 +309,21 @@ As the third agent is dependant on the previous two, we will not run it individu
 
 You can see now that we have the 3 agents in sequential workflow in a node-like architecture. Let's run our full workflow with our agents communicating with eachother. Let's click on `Configure and Run`.
 
-![alt text](devui6.png)
+![alt text](images/devui6.png)
 
-Use the message "Analyse the risk of transaction" and leave the default value for TX2002. You will find the nodes who have run in green, the nodes still running in purple, and the ones that are still going to run in black.
+To run the workflow please use:
+```
+Message: 'Analyze the risk of transaction' 
+Transaction: 'TX2002'
+```
+
+Nodes that have completed will appear in green, those still running in purple, and those yet to run in black.
 
 ![alt text](images/devui7.png)
 
-You can find the result of the workflow on the bottom part of your screen in green. You can also find the events that have been run and its corresponding executors on the right-hand side. Don't worry, we will unpack the tracing on Challenge number 3.
+You can find the workflow result displayed in green at the bottom of your screen. The right-hand side shows all executed events and their corresponding executors. Don't worry—we will cover tracing in detail in Challenge 3.
 
-As a reminder, we are using this DevUI for development purposes only and to visualise what we are working on. From now on, we will be back to code!
+Please note, DevUI is intended for development and visualization purposes only. From this point forward, we will return to coding!
 
 ## Conclusion 🎉
 

@@ -384,7 +384,13 @@ echo "APPLICATIONINSIGHTS_CONNECTION_STRING=\"$appInsightsConnectionString\"" >>
 
 # For backward compatibility, also set OpenAI-style variables pointing to AI Foundry
 echo "AZURE_OPENAI_SERVICE_NAME=\"$aiFoundryHubName\"" >> ../.env
-echo "AZURE_OPENAI_ENDPOINT=\"$aiFoundryEndpoint\"" >> ../.env
+# Construct correct Azure OpenAI endpoint format (.openai.azure.com instead of .cognitiveservices.azure.com)
+if [ -n "$aiFoundryHubName" ]; then
+    azureOpenAIEndpoint="https://${aiFoundryHubName}.openai.azure.com/"
+else
+    azureOpenAIEndpoint="$aiFoundryEndpoint"
+fi
+echo "AZURE_OPENAI_ENDPOINT=\"$azureOpenAIEndpoint\"" >> ../.env
 echo "AZURE_OPENAI_KEY=\"$aiFoundryKey\"" >> ../.env
 echo "AZURE_OPENAI_DEPLOYMENT_NAME=\"gpt-4.1-mini\"" >> ../.env
 echo "MODEL_DEPLOYMENT_NAME=\"gpt-4.1-mini\"" >> ../.env

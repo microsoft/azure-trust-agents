@@ -72,7 +72,7 @@ multidict==6.6.3
 nest-asyncio==1.6.0
 numpy==2.3.1
 oauthlib==3.3.1
-openai==1.99.0
+openai>=1.100.0
 openapi-core==0.19.5
 openapi-schema-validator==0.6.3
 openapi-spec-validator==0.7.2
@@ -143,4 +143,4 @@ azure-functions
 azure-cosmos
 azure-identity
 semantic-kernel==1.36.0
-agent-framework-core==1.0.0b251001
+agent-framework-core
