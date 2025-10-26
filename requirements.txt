@@ -131,7 +131,7 @@ typing-inspection==0.4.1
 typing_extensions==4.14.1
 tzdata==2025.2
 urllib3==2.5.0
-uv==0.7.20
+uv==0.9.5
 uvicorn==0.35.0
 wcwidth==0.2.13
 websockets==15.0
