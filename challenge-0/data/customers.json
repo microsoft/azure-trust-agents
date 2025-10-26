@@ -1,0 +1,114 @@
+[
+  {
+    "customer_id": "CUST1001",
+    "name": "Alice Johnson",
+    "country": "US",
+    "account_age_days": 820,
+    "device_trust_score": 0.9,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1002",
+    "name": "Rahul Mehta",
+    "country": "IN",
+    "account_age_days": 45,
+    "device_trust_score": 0.4,
+    "past_fraud": true
+  },
+  {
+    "customer_id": "CUST1003",
+    "name": "Chen Wei",
+    "country": "CN",
+    "account_age_days": 200,
+    "device_trust_score": 0.6,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1004",
+    "name": "Fatima Al-Sayed",
+    "country": "UAE",
+    "account_age_days": 10,
+    "device_trust_score": 0.3,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1005",
+    "name": "Maria Gonzalez",
+    "country": "ES",
+    "account_age_days": 365,
+    "device_trust_score": 0.8,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1006",
+    "name": "John Smith",
+    "country": "UK",
+    "account_age_days": 1500,
+    "device_trust_score": 0.95,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1007",
+    "name": "Igor Petrov",
+    "country": "RU",
+    "account_age_days": 90,
+    "device_trust_score": 0.3,
+    "past_fraud": true
+  },
+  {
+    "customer_id": "CUST1008",
+    "name": "Aisha Mohamed",
+    "country": "SO",
+    "account_age_days": 25,
+    "device_trust_score": 0.2,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1009",
+    "name": "David Cohen",
+    "country": "IL",
+    "account_age_days": 720,
+    "device_trust_score": 0.88,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1010",
+    "name": "Omar Reza",
+    "country": "IR",
+    "account_age_days": 12,
+    "device_trust_score": 0.1,
+    "past_fraud": true
+  },
+  {
+    "customer_id": "CUST1011",
+    "name": "Kim Min-Ji",
+    "country": "KR",
+    "account_age_days": 540,
+    "device_trust_score": 0.7,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1012",
+    "name": "Hassan Ali",
+    "country": "SY",
+    "account_age_days": 30,
+    "device_trust_score": 0.25,
+    "past_fraud": true
+  },
+  {
+    "customer_id": "CUST1013",
+    "name": "Elena Rossi",
+    "country": "IT",
+    "account_age_days": 2000,
+    "device_trust_score": 0.92,
+    "past_fraud": false
+  },
+  {
+    "customer_id": "CUST1014",
+    "name": "Mohammed Jafar",
+    "country": "YE",
+    "account_age_days": 5,
+    "device_trust_score": 0.15,
+    "past_fraud": false
+  }
+]

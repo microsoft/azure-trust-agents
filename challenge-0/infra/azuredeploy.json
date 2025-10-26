@@ -1,0 +1,479 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.31.34.60546",
+      "templateHash": "simplified-template"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "swedencentral",
+      "allowedValues": [
+        "swedencentral"
+      ],
+      "metadata": {
+        "description": "Azure location where resources should be deployed (e.g., swedencentral)"
+      }
+    }
+  },
+  "variables": {
+    "prefix": "msagthack",
+    "suffix": "[uniqueString(resourceGroup().id)]",
+    "storageAccountName": "[replace(format('{0}-sa-{1}', variables('prefix'), variables('suffix')), '-', '')]",
+    "logAnalyticsWorkspaceName": "[format('{0}-loganalytics-{1}', variables('prefix'), variables('suffix'))]",
+    "searchServiceName": "[format('{0}-search-{1}', variables('prefix'), variables('suffix'))]",
+    "containerRegistryName": "[replace(format('{0}cr{1}', variables('prefix'), variables('suffix')), '-', '')]",
+    "aiFoundryName": "[format('{0}-aifoundry-{1}', variables('prefix'), variables('suffix'))]",
+    "aiProjectName": "[format('{0}-aiproject-{1}', variables('prefix'), variables('suffix'))]",
+    "applicationInsightsName": "[format('{0}-appinsights-{1}', variables('prefix'), variables('suffix'))]",
+    "cosmosDbAccountName": "[format('{0}-cosmos-{1}', variables('prefix'), variables('suffix'))]",
+    "containerAppEnvironmentName": "[format('{0}-caenv-{1}', variables('prefix'), variables('suffix'))]",
+    "containerAppName": "[format('{0}-ca-{1}', variables('prefix'), variables('suffix'))]",
+    "contentSafetyName": "[format('{0}-contentsafety-{1}', variables('prefix'), variables('suffix'))]",
+    "cognitiveServicesUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
+    "searchServiceContributorRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')]",
+    "aiDeveloperRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '64702f94-c441-49e6-a78b-ef80e0188fee')]",
+    "contributorRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ApiManagement/service",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[format('{0}-apim-{1}', variables('prefix'), variables('suffix'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "BasicV2",
+        "capacity": 1
+      },
+      "properties": {
+        "publisherEmail": "admin@contoso.com",
+        "publisherName": "Contoso"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "allowBlobPublicAccess": false,
+        "networkAcls": {
+          "defaultAction": "Allow"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2021-06-01",
+      "name": "[variables('logAnalyticsWorkspaceName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "retentionInDays": 30,
+        "features": {
+          "searchVersion": 1
+        },
+        "sku": {
+          "name": "PerGB2018"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2023-04-15",
+      "name": "[variables('cosmosDbAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "GlobalDocumentDB",
+      "tags": {
+        "CostControl": "Ignore",
+        "SecurityControl": "Ignore"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "consistencyPolicy": {
+          "defaultConsistencyLevel": "Session"
+        },
+        "locations": [
+          {
+            "locationName": "[parameters('location')]",
+            "failoverPriority": 0,
+            "isZoneRedundant": false
+          }
+        ],
+        "databaseAccountOfferType": "Standard",
+        "enableAutomaticFailover": false,
+        "enableMultipleWriteLocations": false,
+        "capabilities": [
+          {
+            "name": "EnableServerless"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Search/searchServices",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('searchServiceName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "basic"
+      },
+      "properties": {
+        "hostingMode": "default",
+        "replicaCount": 1,
+        "partitionCount": 1
+      }
+    },
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('containerRegistryName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {
+        "adminUserEnabled": true
+      }
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('containerAppEnvironmentName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName')), '2021-06-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName')), '2021-06-01').primarySharedKey]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('containerAppName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 8080,
+            "allowInsecure": false,
+            "traffic": [
+              {
+                "weight": 100,
+                "latestRevision": true
+              }
+            ]
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "main",
+              "image": "ghcr.io/dsanchor/fraud-alert-management-api:latest",
+              "resources": {
+                "cpu": 0.5,
+                "memory": "1Gi"
+              },
+              "env": [
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 10,
+            "rules": [
+              {
+                "name": "http-rule",
+                "http": {
+                  "metadata": {
+                    "concurrentRequests": "30"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvironmentName'))]",
+        "[resourceId('Microsoft.ContainerRegistry/registries', variables('containerRegistryName'))]",
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('contentSafetyName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('applicationInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('contentSafetyName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "ContentSafety",
+      "properties": {
+        "customSubDomainName": "[variables('contentSafetyName')]",
+        "disableLocalAuth": false,
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[variables('aiFoundryName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "AIServices",
+      "properties": {
+        "allowProjectManagement": true,
+        "customSubDomainName": "[variables('aiFoundryName')]",
+        "disableLocalAuth": false
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', variables('aiFoundryName'), variables('aiProjectName'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', variables('aiFoundryName'), 'gpt-4.1-mini')]",
+      "sku": {
+        "capacity": 200,
+        "name": "GlobalStandard"
+      },
+      "properties": {
+        "model": {
+          "name": "gpt-4.1-mini",
+          "format": "OpenAI"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', variables('aiFoundryName'), 'text-embedding-ada-002')]",
+      "sku": {
+        "capacity": 200,
+        "name": "GlobalStandard"
+      },
+      "properties": {
+        "model": {
+          "name": "text-embedding-ada-002",
+          "format": "OpenAI"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('aiFoundryName'), 'gpt-4.1-mini')]"
+
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName')), variables('cognitiveServicesUserRoleId'))]",
+      "scope": "[format('Microsoft.CognitiveServices/accounts/{0}', variables('aiFoundryName'))]",
+      "properties": {
+        "roleDefinitionId": "[variables('cognitiveServicesUserRoleId')]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName')), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName')), variables('searchServiceContributorRoleId'))]",
+      "scope": "[format('Microsoft.Search/searchServices/{0}', variables('searchServiceName'))]",
+      "properties": {
+        "roleDefinitionId": "[variables('searchServiceContributorRoleId')]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName')), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName')), variables('searchServiceContributorRoleId'))]",
+      "scope": "[format('Microsoft.Search/searchServices/{0}', variables('searchServiceName'))]",
+      "properties": {
+        "roleDefinitionId": "[variables('searchServiceContributorRoleId')]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName')), '2025-04-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName'))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}-aisearch', variables('aiFoundryName'), variables('aiFoundryName'))]",
+      "properties": {
+        "category": "CognitiveSearch",
+        "target": "[format('https://{0}.search.windows.net', variables('searchServiceName'))]",
+        "authType": "ApiKey",
+        "isSharedToAll": true,
+        "credentials": {
+          "key": "[listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), '2023-11-01').primaryKey]"
+        },
+        "metadata": {
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
+          "location": "[parameters('location')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "storageAccountName": {
+      "type": "string",
+      "value": "[variables('storageAccountName')]"
+    },
+    "logAnalyticsWorkspaceName": {
+      "type": "string",
+      "value": "[variables('logAnalyticsWorkspaceName')]"
+    },
+    "searchServiceName": {
+      "type": "string",
+      "value": "[variables('searchServiceName')]"
+    },
+    "aiFoundryHubName": {
+      "type": "string",
+      "value": "[variables('aiFoundryName')]"
+    },
+    "aiFoundryProjectName": {
+      "type": "string",
+      "value": "[variables('aiProjectName')]" 
+    },
+    "containerRegistryName": {
+      "type": "string",
+      "value": "[variables('containerRegistryName')]"
+    },
+    "acrName": {
+      "type": "string",
+      "value": "[variables('containerRegistryName')]"
+    },
+    "acrUsername": {
+      "type": "string",
+      "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('containerRegistryName')), '2023-07-01').username]"
+    },
+    "acrPassword": {
+      "type": "securestring",
+      "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('containerRegistryName')), '2023-07-01').passwords[0].value]"
+    },
+    "applicationInsightsName": {
+      "type": "string",
+      "value": "[variables('applicationInsightsName')]"
+    },
+    "searchServiceEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.search.windows.net/', variables('searchServiceName'))]"
+    },
+    "aiFoundryHubEndpoint": {
+      "type": "string",
+      "value": "[format('https://ml.azure.com/home?wsid={0}', resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName')))]"
+    },
+    "aiFoundryProjectEndpoint": {
+      "type": "string",
+      "value": "[format('https://ai.azure.com/build/overview?wsid={0}', resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName')))]"
+    },
+    "cosmosDbAccountName": {
+      "type": "string",
+      "value": "[variables('cosmosDbAccountName')]"
+    },
+    "cosmosDbEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName')), '2023-04-15').documentEndpoint]"
+    },
+    "containerAppEnvironmentName": {
+      "type": "string",
+      "value": "[variables('containerAppEnvironmentName')]"
+    },
+    "containerAppName": {
+      "type": "string",
+      "value": "[variables('containerAppName')]"
+    },
+    "containerAppUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('containerAppName')), '2024-03-01').configuration.ingress.fqdn)]"
+    },
+    "contentSafetyName": {
+      "type": "string",
+      "value": "[variables('contentSafetyName')]"
+    },
+    "contentSafetyEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('contentSafetyName')), '2023-05-01').endpoint]"
+    }
+  }
+}
