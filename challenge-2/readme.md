@@ -104,30 +104,11 @@ Finally, save the "MCP Server URL" of the newly created MCP server, you will nee
 MCP_SERVER_ENDPOINT=<MCP_SERVER_URL>
 ```
 
-## Part 2 - To Agent or Not to Agent: That's the Question
+## Part 2 - The creation of our Fraud Alert Agent
 
 Having many types of agents in the Microsoft Agent Framework is vital because it ensures flexibility, modularity, and scalability when building AI systems that reflect different real-world roles and responsibilities.
 
-Each agent type is specialized for a particular purpose — conversational, orchestration, reasoning, or tooling. This flexibility lets developers choose exactly the right agent for each task, improving efficiency and reducing unnecessary complexity in system design. As of October 2025, the MAF support over [8 simple agent types](https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-types/?pivots=programming-language-python#supported-agent-types). Some key aspect to have in mind are:
-- **Flexibility** – Each agent type is designed for a specific purpose, such as conversation, orchestration, reasoning, or tooling. This specialization lets developers match the right kind of intelligence or logic to each task, improving the system’s efficiency and focus.
-
-- **Modularity** – All agents share a unified base class but can be swapped, reused, or extended independently. This modular design allows incremental development, code reuse, and clear separation of concerns within multi-agent systems.
-
-- **Scalability** – Multiple agent types enable orchestration patterns where agents collaborate — one plans, others act or validate. This structured coordination mirrors team workflows and scales easily from prototypes to enterprise deployments.
-
-- **Interoperability** – Through open standards like MCP, Agent-to-Agent (A2A), and OpenAPI, different agent types can connect to external systems and other frameworks. This ensures smooth communication across Azure AI Foundry, Microsoft 365, and third-party ecosystems.
-
-- **Enterprise Readiness** – Observability, compliance, and security are built into the Agent Framework. Different agent types support both creative reasoning and deterministic workflows, letting organizations combine innovation and governance within one unified runtime.
-
-Now, in Challenge 1 we have created our 3 Azure AI Foundry agents and used them in a workflow. However, for this challenge we're going to explore a different approach by implementing our **Compliance Report Agent using [AzureOpenAIResponsesClient](https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-types/azure-openai-responses-agent?pivots=programming-language-python)** instead of the Azure AI Foundry Agent Service. This strategic choice makes perfect sense for compliance reporting because:
-
-- **🎯 Stateless Operations**: Compliance reports are independent, one-time analyses that don't require conversation history or persistent state
-- **⚡ Performance Critical**: Regulatory compliance demands fast response times - direct API calls eliminate agent service overhead
-- **🔧 Enhanced MCP Integration**: The responses client provides seamless integration with our Fraud Alert Manager MCP server through `HostedMCPTool` with immediate execution (`approval_mode="never_require"`)
-- **💰 Cost Efficiency**: Pay-per-API-call model is more economical for transactional compliance operations versus continuous agent hosting
-- **🛡️ Enterprise Simplicity**: Direct Azure OpenAI integration leverages existing governance, monitoring, and security patterns without additional agent infrastructure complexity
-
-This demonstrates the **flexibility of the Microsoft Agent Framework** - choosing the right agent type for each specific use case rather than a one-size-fits-all approach. While Azure AI Foundry agents excel for conversational workflows requiring state management, AzureOpenAIResponsesClient is optimal for high-performance, stateless compliance operations with external system integrations.
+Now, in Challenge 1 we have created our 3 Azure AI Foundry agents and used them in a workflow. In this challenge we're going to create a fourth agent dedicated only to sending and managing alert requests.
 
 Before we start, please do have a look at the Agent Framework documentation on how to use [MCP servers](https://learn.microsoft.com/en-us/agent-framework/user-guide/model-context-protocol/using-mcp-tools?pivots=programming-language-python), as this is going to be key in this second part of our challenge.
 
@@ -135,36 +116,32 @@ Before we start, please do have a look at the Agent Framework documentation on h
 
 As this is our last agent, and we are creating it individually, we will use the file `agents/risk-analyser-tx-summary.md` as a sample output of the result from the risk analyser agent (Agent number 2 in our sequence). 
 
-
 ### Define the MCP as a Tool in the Agent
 
 Now, it is time to configure a simple Agent that uses the MCP server. 
 
-The agent has been implemented for you in the `challenge-2/agents/compliance_report_responses_client.py` file.
+The agent has been implemented for you in the `challenge-2/agents/fraud_alert_foundry_agent.py` file.
 
-We have left a placeholder in the code so you can add the MCP server as a tool. In line 99, find:
+We have left a placeholder in the code so you can add the MCP server as a tool. In line 29, find:
 
 ```python
-            tools=HostedMCPTool(
+mcp_tool = < PLACEHOLDER FOR MCP TOOL >
 ```
 
-Add your current configuration:
+Replace it by:
 
 ```python
-            name="Fraud Alert Manager MCP",
-            url=mcp_endpoint,
-            description="Manages fraud alerts and escalations for financial transactions",
-            approval_mode="never_require",
-            headers={
-                "Ocp-Apim-Subscription-Key": mcp_subscription_key
-            } if mcp_subscription_key else {}
-     ),
-``` 
+mcp_tool = McpTool(
+    server_label="fraudalertmcp", 
+    server_url=mcp_endpoint,
+)
+mcp_tool.update_headers("Ocp-Apim-Subscription-Key",
+                        mcp_subscription_key)
+```
+
 About this configuration: 
-- The kind of tool is [HostedMCPTool](https://learn.microsoft.com/en-us/agent-framework/user-guide/model-context-protocol/using-mcp-tools?pivots=programming-language-python#hostedmcptool)
-- `approval_mode="never_require"` enables immediate execution without requiring approval for each MCP tool call
+- The kind of tool is [McpTool](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/how-to/tools/model-context-protocol-samples?pivots=python#create-an-agent-with-the-mcp-tool)
 - The subscription key header is required to authenticate against the API Management instance. Good stuff if you want to control access to your MCP server!
-- `description` provides context to the AI agent about what this MCP server does for better tool selection
 
 ### Run the Agent
 
@@ -178,19 +155,19 @@ Now, run the agent in another terminal:
 
 ```bash
 cd challenge-2/agents
-python compliance_report_responses_client.py
+python fraud_alert_foundry_agent.py
 ```
 
 See output on both terminals. You should see the agent sending requests to the Fraud Alert Manager API and receiving responses.
 
 
-## Part 3 - Let's Update our Workflow!
+## Part 3 - Let's onboard our new agent in our Workflow
 
-The workflow we are building in Challenge 2 represents a significant evolution from Challenge 1, demonstrating the Microsoft Agent Framework's flexibility through a sophisticated hybrid approach that combines Azure AI Foundry agents with AzureOpenAIResponsesClient for enhanced MCP (Model Context Protocol) integration.
+The workflow we are building in Challenge 2 represents a significant evolution from Challenge 1, demonstrating the Microsoft Agent Framework's flexibility through a sophisticated hybrid approach that combines Azure AI Foundry with Agents with MCP (Model Context Protocol) integration.
 
-The workflow maintains the proven 3-executor sequential pattern (Customer Data → Risk Analyzer → Compliance Report) but introduces a groundbreaking the dual-agent architecture, following the principle of **"right tool for the right job"**  - using Azure AI Foundry agents where conversational state and Azure service integration excel, and switching to the responses client where direct API performance and MCP tool integration can provide superior results.
+The new workflow evolves from the proven 3-executor sequential pattern to an advanced 4-executor architecture (Customer Data → Risk Analyzer → Compliance Report + Fraud Alert running in parallel) and introduces a groundbreaking dual-agent architecture, following the principle of **"right tool for the right job"** - using Azure AI Foundry agents where conversational state and Azure service integration excel, and switching to the responses client where direct API performance and MCP tool integration can provide superior results.
 
-Let's go ahead and open our `sequential_workflow_chal2.py` file. Now, we are not dependent on sample data anymore, we will find a full integration for 3 agents, making the newly made Compliance Report Executor robust and one step closer to being production-ready.
+Let's go ahead and open our `sequential_workflow_chal2.py` file. Now, we are not dependent on sample data anymore, we will find a full integration for the 4 agents, making the newly made Farud Alert Executor robust and one step closer to being production-ready.
 
 ```python
 cd agents
@@ -234,24 +211,6 @@ Maximum Score: Capped at 100
 - **COMPLIANT:** Low-risk transactions meeting all regulatory requirements  
 - **CONDITIONAL_COMPLIANCE:** Medium risk requiring enhanced monitoring  
 - **NON_COMPLIANT:** High-risk transactions violating compliance thresholds
-
-#### Business Impact Scoring
-
-- **Score 0–49 (Low Risk):**  
-  - Action: APPROVE transaction  
-  - Monitoring: Standard procedures  
-  - Filing: Routine record keeping  
-
-- **Score 50–74 (Medium Risk):**  
-  - Action: INVESTIGATE further  
-  - Monitoring: Enhanced customer monitoring  
-  - Filing: Internal risk documentation  
-
-- **Score 75–100 (High Risk):**  
-  - Action: BLOCK transaction immediately  
-  - Monitoring: Freeze account pending investigation  
-  - Filing: Suspicious Activity Report (SAR) to regulators
-
 
 
 ### Conclusion 🎉
