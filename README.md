@@ -1,4 +1,4 @@
-# Azure Trust and Compliance Multi-Agents Hack 
+# Automated Regulatory Compliance & Audit​ Hack 
 
 Welcome to the Automated Compliance Agents Hackathon! 🏦 Today, you'll dive into the world of intelligent agent systems powered by Azure AI to revolutionize regulatory compliance in financial services. Get ready for a hands-on, high-impact day of learning and innovation!
 
@@ -21,15 +21,18 @@ By participating in this hackathon, you will learn how to:
 
 ## Architecture
 
-In this hackathon we will leverage the **Microsoft Agent Framework** to create a sophisticated, enterprise-ready compliance monitoring solution. For this reason, we will use 3 agents to create a sequential workflow: 
+In this hackathon we will leverage the **Microsoft Agent Framework** to create a sophisticated, enterprise-ready compliance monitoring solution. The architecture evolves from a proven 3-executor sequential pattern to an advanced 4-executor architecture with parallel processing capabilities: 
 
-- **Customer Data Agent:** Retrieves and standardizes customer and transaction data from Azure Cosmos DB to enable profiling and risk detection.
-- **Risk Analyzer Agent:** Assesses fraud risk and compliance by analyzing data against regulatory policies using Azure AI Search.
-- **Compliance Report Agent:** Produces formal compliance reports and audit documentation with summaries, findings, and recommendations for regulatory use.
+- **Customer Data Agent:** Retrieves and standardizes customer and transaction data from Azure Cosmos DB to enable comprehensive profiling and risk detection.
+- **Risk Analyzer Agent:** Assesses fraud risk and compliance by analyzing data against regulatory policies using Azure AI Foundry agents, serving as the decision point for parallel processing.
+- **Compliance Report Agent:** Produces formal compliance reports and audit documentation with summaries, findings, and regulatory recommendations using Azure AI Foundry agents, focused purely on audit and compliance analysis.
+- **Fraud Alert Agent:** Creates and manages real-time fraud alerts through MCP (Model Context Protocol) integration using Azure AI Foundry agents, handling alert escalation and notification workflows with external systems.
 
-<img width="1744" height="715" alt="image" src="https://github.com/user-attachments/assets/ef171385-4141-46e1-acff-95204b351335" />
+The workflow follows the principle of **"right tool for the right job"** - using Azure AI Foundry agents for conversational AI capabilities and MCP integration where external system connectivity is required. After risk analysis, both compliance reporting and fraud alerting execute in parallel for optimal performance and comprehensive coverage. This orchestration ensures continuous monitoring of flagged events, rapid response to high-risk activities, and robust compliance reporting with full observability.
 
-The workflow ensures continuous monitoring of flagged events, rapid response to high-risk activities, and robust compliance reporting with full observability.
+
+<img width="1907" height="785" alt="image" src="https://github.com/user-attachments/assets/48649cf4-47c8-47c4-9ef0-ad0b2188f73f" />
+
 
 ## Requirements
 To successfully complete this hackathon, you will need the following:
