@@ -161,6 +161,14 @@ python fraud_alert_foundry_agent.py
 See output on both terminals. You should see the agent sending requests to the Fraud Alert Manager API and receiving responses.
 
 
+**Important**
+
+Add you new Agent Id for the Fraud Alert Agent to the `.env` file as follows:
+
+```bash
+FRAUD_ALERT_AGENT_ID=<your_fraud_alert_agent_id>
+```
+
 ## Part 3 - Let's onboard our new agent in our Workflow
 
 The workflow we are building in Challenge 2 represents a significant evolution from Challenge 1, demonstrating the Microsoft Agent Framework's flexibility through a sophisticated hybrid approach that combines Azure AI Foundry with Agents with MCP (Model Context Protocol) integration.

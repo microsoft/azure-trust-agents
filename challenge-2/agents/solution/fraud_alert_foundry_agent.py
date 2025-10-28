@@ -26,7 +26,12 @@ project_client = AIProjectClient(
     credential=DefaultAzureCredential(),
 )
 # Initialize agent MCP tool
-mcp_tool = < PLACEHOLDER FOR MCP TOOL >
+mcp_tool = McpTool(
+    server_label="fraudalertmcp",  # Label of the MCP server to use
+    server_url=mcp_endpoint,
+)
+mcp_tool.update_headers("Ocp-Apim-Subscription-Key",
+                        mcp_subscription_key)
 
 # Create agent with MCP tool and process agent run
 with project_client:
