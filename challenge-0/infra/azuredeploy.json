@@ -91,10 +91,6 @@
       "name": "[variables('cosmosDbAccountName')]",
       "location": "[parameters('location')]",
       "kind": "GlobalDocumentDB",
-      "tags": {
-        "CostControl": "Ignore",
-        "SecurityControl": "Ignore"
-      },
       "identity": {
         "type": "SystemAssigned"
       },
