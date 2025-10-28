@@ -1,3 +1,38 @@
+"""
+CHALLENGE 2 WORKFLOW OBSERVABILITY IMPLEMENTATION
+
+This file implements the Challenge 2 workflow architecture with comprehensive observability:
+
+WORKFLOW ARCHITECTURE:
+1. Customer Data Executor → Retrieves transaction and customer data from Cosmos DB
+2. Risk Analyzer Executor → Performs AI-powered risk analysis 
+3. Compliance Report Executor → Generates compliance audit reports (Parallel Path 1)
+4. Fraud Alert Executor → Creates fraud alerts via MCP tools (Parallel Path 2)
+
+OBSERVABILITY FEATURES:
+- Distributed tracing with OpenTelemetry spans for each executor
+- Custom metrics for business KPIs (risk scores, compliance decisions, fraud alerts)
+- Business event tracking for workflow steps and decisions
+- Cosmos DB instrumentation with performance monitoring  
+- Parallel execution monitoring and coordination
+- Error tracking and exception recording
+- Processing time measurements for AI model calls
+- MCP tool usage tracking and performance metrics
+
+TELEMETRY DATA CAPTURED:
+- Transaction processing metrics and timings
+- Risk assessment scores and recommendations  
+- Compliance ratings and regulatory requirements
+- Fraud alert creation and severity levels
+- Cosmos DB query performance and results
+- AI model processing times and responses
+- Workflow execution flow and parallel coordination
+- Business process completion rates and success metrics
+
+The implementation follows Challenge 2's parallel execution pattern where both 
+compliance reports and fraud alerts are generated simultaneously after risk analysis.
+"""
+
 import asyncio
 import os
 import json
@@ -73,8 +108,19 @@ class ComplianceAuditResponse(BaseModel):
     requires_regulatory_filing: bool = False
     transaction_id: str
     status: str
-    mcp_tool_used: bool = False
-    mcp_actions: list = []
+
+class FraudAlertResponse(BaseModel):
+    alert_id: str
+    alert_status: str
+    severity: str
+    decision_action: str
+    alert_created: bool = False
+    mcp_server_response: str = ""
+    transaction_id: str
+    status: str
+    created_timestamp: str = ""
+    assigned_to: str = ""
+    reasoning: str = ""
 
 # Cosmos DB helper functions with telemetry decorators
 @cosmos_instrumentation.instrument_transaction_get
@@ -134,7 +180,7 @@ def parse_risk_analysis_result(risk_analysis_text: str) -> dict:
         
         text_lower = risk_analysis_text.lower()
         
-        # Extract risk score - try multiple patterns
+        # Extract risk score 
         risk_score_pattern = r'risk\s*score[:\s]*(\d+(?:\.\d+)?)'
         score_match = re.search(risk_score_pattern, text_lower)
         if score_match:
@@ -222,7 +268,7 @@ def parse_risk_analysis_result(risk_analysis_text: str) -> dict:
     except Exception as e:
         return {"error": f"Failed to parse risk analysis: {str(e)}"}
 
-def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_type: str = "STANDARD") -> dict:
+def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_type: str = "TRANSACTION_AUDIT") -> dict:
     """Generate structured audit report from risk analysis text."""
     
     try:
@@ -357,14 +403,26 @@ async def customer_data_executor(
             "business.process": "fraud_detection"
         })
         
-        # Record metric for transaction processing
-        telemetry.record_transaction_processed("data_retrieval", request.transaction_id)
+        # Record metric for transaction processing with detailed span
+        with telemetry.create_detailed_operation_span("metric_recording", "business_metrics") as metric_span:
+            metric_span.set_attributes({
+                "metric.type": "transaction_counter",
+                "metric.step": "data_retrieval"
+            })
+            telemetry.record_transaction_processed("data_retrieval", request.transaction_id)
+            metric_span.add_event("Transaction processing metric recorded")
         
-        # Send business event
+        # Send business events for comprehensive tracking
         send_business_event("fraud_detection.transaction.started", {
             "transaction_id": request.transaction_id,
             "step": "data_retrieval",
             "executor": "customer_data_executor"
+        })
+        
+        send_business_event("fraud_detection.executor.started", {
+            "transaction_id": request.transaction_id,
+            "executor_name": "customer_data_executor",
+            "executor_type": "DataRetrieval"
         })
         
         try:
@@ -372,8 +430,19 @@ async def customer_data_executor(
                 "transaction.id": request.transaction_id
             })
             
-            # Get real data from Cosmos DB (telemetry handled by decorators)
-            transaction_data = get_transaction_data(request.transaction_id)
+            # Create sub-span for transaction data retrieval
+            with telemetry.tracer.start_as_current_span("executor.process.transaction_data_retrieval") as tx_span:
+                tx_span.set_attributes({
+                    "data.operation": "transaction_retrieval",
+                    "data.source": "cosmos_db"
+                })
+                
+                # Get real data from Cosmos DB (telemetry handled by decorators)
+                transaction_data = get_transaction_data(request.transaction_id)
+                
+                tx_span.add_event("Transaction data retrieved", {
+                    "transaction.found": "error" not in transaction_data
+                })
             
             if "error" in transaction_data:
                 span.set_attribute("executor.success", False)
@@ -387,8 +456,30 @@ async def customer_data_executor(
                 )
             else:
                 customer_id = transaction_data.get("customer_id")
-                customer_data = get_customer_data(customer_id)
-                transaction_history = get_customer_transactions(customer_id)
+                
+                # Create sub-span for customer data retrieval  
+                with telemetry.tracer.start_as_current_span("executor.process.customer_data_retrieval") as cust_span:
+                    cust_span.set_attributes({
+                        "data.operation": "customer_retrieval",
+                        "customer.id": customer_id
+                    })
+                    
+                    customer_data = get_customer_data(customer_id)
+                    cust_span.add_event("Customer data retrieved", {
+                        "customer.found": "error" not in customer_data
+                    })
+                
+                # Create sub-span for transaction history retrieval
+                with telemetry.tracer.start_as_current_span("executor.process.transaction_history_retrieval") as hist_span:
+                    hist_span.set_attributes({
+                        "data.operation": "transaction_history",
+                        "customer.id": customer_id
+                    })
+                    
+                    transaction_history = get_customer_transactions(customer_id)
+                    hist_span.add_event("Transaction history retrieved", {
+                        "history.count": len(transaction_history) if isinstance(transaction_history, list) else 0
+                    })
                 
                 # Add business metrics and attributes
                 span.set_attributes({
@@ -497,6 +588,13 @@ async def risk_analyzer_executor(
         })
         
         try:
+            # Send business event for risk analyzer start
+            send_business_event("fraud_detection.risk_analysis.started", {
+                "transaction_id": customer_response.transaction_id,
+                "executor": "risk_analyzer_executor",
+                "step": "ai_risk_assessment"
+            })
+            
             # Configuration
             project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
             model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
@@ -515,13 +613,22 @@ async def risk_analyzer_executor(
                 "agent_id": RISK_ANALYSER_AGENT_ID
             })
             
-            async with AzureCliCredential() as credential:
-                risk_client = AzureAIAgentClient(
-                    project_endpoint=project_endpoint,
-                    model_deployment_name=model_deployment_name,
-                    async_credential=credential,
-                    agent_id=RISK_ANALYSER_AGENT_ID
-                )
+            # Create sub-span for AI client initialization
+            with telemetry.tracer.start_as_current_span("executor.process.ai_client_setup") as client_span:
+                client_span.set_attributes({
+                    "ai.service": "azure_ai_foundry",
+                    "ai.agent_id": RISK_ANALYSER_AGENT_ID or "unknown"
+                })
+                
+                async with AzureCliCredential() as credential:
+                    risk_client = AzureAIAgentClient(
+                        project_endpoint=project_endpoint,
+                        model_deployment_name=model_deployment_name,
+                        async_credential=credential,
+                        agent_id=RISK_ANALYSER_AGENT_ID
+                    )
+                    
+                    client_span.add_event("AI client initialized successfully")
                 
                 async with risk_client as client:
                     risk_agent = ChatAgent(
@@ -583,26 +690,51 @@ Provide a structured risk assessment with clear regulatory justification.
                     parsed_risk_data = parse_risk_analysis_result(result_text)
                     
                     if "parsed_elements" in parsed_risk_data and "risk_score" in parsed_risk_data["parsed_elements"]:
-                        # Use the detailed parsed risk score (0-100) and convert to 0-1 scale
+                        # Use the detailed parsed risk score (0-100) and convert to 0-10 scale as required by MCP tool
                         detailed_score = parsed_risk_data["parsed_elements"]["risk_score"]
-                        risk_score_value = detailed_score / 100.0  # Convert 0-100 to 0-1 scale
+                        risk_score_value = detailed_score / 10.0  # Convert 0-100 to 0-10 scale for MCP tool compatibility
                     else:
-                        # Fallback to simple calculation if parsing fails
-                        risk_score_value = 0.5  # Default medium risk
-                        if recommendation == "BLOCK":
-                            risk_score_value = 0.9
-                        elif recommendation == "APPROVE":
-                            risk_score_value = 0.1
+                        # If parsing fails, raise an error instead of using fallback
+                        raise ValueError("Failed to parse risk score from AI response")
                     
-                    # Record business metrics using telemetry manager
-                    telemetry.record_risk_score(risk_score_value, customer_response.transaction_id, recommendation)
+                    # Record business metrics using telemetry manager with detailed tracking
+                    with telemetry.create_detailed_operation_span(
+                        "risk_score_recording", 
+                        "business_metrics",
+                        risk_score=risk_score_value,
+                        recommendation=recommendation
+                    ) as risk_metric_span:
+                        risk_metric_span.set_attributes({
+                            "metric.type": "risk_score_histogram",
+                            "risk.score_value": risk_score_value,
+                            "risk.recommendation": recommendation
+                        })
+                        telemetry.record_risk_score(risk_score_value, customer_response.transaction_id, recommendation)
+                        risk_metric_span.add_event("Risk score metric recorded", {
+                            "score": risk_score_value,
+                            "recommendation": recommendation
+                        })
                     
-                    # Send business event
+                    # Send comprehensive business events
                     send_business_event("fraud_detection.risk.assessed", {
                         "transaction_id": customer_response.transaction_id,
                         "risk_score": str(risk_score_value),
                         "recommendation": recommendation,
                         "processing_time_seconds": str(processing_time)
+                    })
+                    
+                    send_business_event("fraud_detection.ai_processing.completed", {
+                        "transaction_id": customer_response.transaction_id,
+                        "executor": "risk_analyzer_executor",
+                        "model": model_deployment_name,
+                        "processing_time": processing_time,
+                        "response_length": len(result_text)
+                    })
+                    
+                    send_business_event("fraud_detection.risk_factors.identified", {
+                        "transaction_id": customer_response.transaction_id,
+                        "risk_factors_count": len(risk_factors),
+                        "recommendation": recommendation
                     })
                     
                     span.set_attributes({
@@ -642,7 +774,7 @@ async def compliance_report_executor(
     risk_response: RiskAnalysisResponse,
     ctx: WorkflowContext[Never, ComplianceAuditResponse]
 ) -> None:
-    """Compliance Report Executor using OpenAI Responses Client that generates audit reports from risk analysis results."""
+    """Compliance Report Executor that generates audit reports from risk analysis results without MCP integration."""
     
     with telemetry.create_processing_span(
         executor_id="compliance_report_executor",
@@ -660,54 +792,46 @@ async def compliance_report_executor(
         })
         
         try:
+            # Send business event for compliance report start
+            send_business_event("fraud_detection.compliance_report.started", {
+                "transaction_id": risk_response.transaction_id,
+                "executor": "compliance_report_executor", 
+                "risk_recommendation": risk_response.recommendation
+            })
+            
             # Configuration
-            mcp_endpoint = os.environ.get("MCP_SERVER_ENDPOINT")
-            mcp_subscription_key = os.environ.get("APIM_SUBSCRIPTION_KEY")
-            azure_openai_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+            project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
             model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
+            COMPLIANCE_REPORT_AGENT_ID = os.getenv("COMPLIANCE_REPORT_AGENT_ID")
             
-            span.add_event("Starting MCP-enabled compliance report generation")
+            span.set_attributes({
+                "ai.model": model_deployment_name,
+                "agent.id": COMPLIANCE_REPORT_AGENT_ID or "not_configured"
+            })
             
-            # Create OpenAI Responses Client-based compliance agent
-            async with ChatAgent(
-                chat_client=AzureOpenAIResponsesClient(
-                    credential=SyncAzureCliCredential(),
-                    endpoint=azure_openai_endpoint,
-                    deployment_name=model_deployment_name
-                ),
-                name="ComplianceReportAgent",
-                instructions="""You are a Compliance Report Agent specialized in generating formal audit reports based on risk analysis findings and transaction data.
-
-Your primary responsibilities include:
-- Analyzing transaction risk summaries and generating compliance audit reports
-- Creating appropriate fraud alerts through the MCP server when compliance violations are detected
-- Determining correct severity levels (LOW, MEDIUM, HIGH, CRITICAL) for compliance issues
-- Setting proper alert status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)
-- Recommending actions (ALLOW, BLOCK, MONITOR, INVESTIGATE) based on compliance analysis
-- Generating executive-level audit summaries and compliance dashboards
-- Ensuring regulatory compliance and audit trail documentation
-
-When generating compliance reports:
-1. Parse risk analysis data to extract key compliance indicators
-2. Assess regulatory compliance based on transaction patterns and risk factors
-3. Create formal audit reports with clear findings and recommendations
-4. Generate fraud alerts for any transactions that violate compliance thresholds
-5. Provide executive summaries for management review
-
-Always create detailed reports with proper risk assessments, regulatory implications, and clear audit trails.""",
-                tools=HostedMCPTool(
-                    name="Fraud Alert Manager MCP",
-                    url=mcp_endpoint,
-                    description="Manages fraud alerts and escalations for financial transactions",
-                    approval_mode="never_require",
-                    headers={
-                        "Ocp-Apim-Subscription-Key": mcp_subscription_key
-                    } if mcp_subscription_key else {}
-                ),
-            ) as agent:
+            if not COMPLIANCE_REPORT_AGENT_ID:
+                raise ValueError("COMPLIANCE_REPORT_AGENT_ID required")
+            
+            span.add_event("Starting AI Foundry compliance report generation")
+            
+            # Use AI Foundry Agent Client like Challenge 2
+            async with AzureCliCredential() as credential:
+                compliance_client = AzureAIAgentClient(
+                    project_endpoint=project_endpoint,
+                    model_deployment_name=model_deployment_name,
+                    async_credential=credential,
+                    agent_id=COMPLIANCE_REPORT_AGENT_ID
+                )
                 
-                # Create comprehensive compliance report prompt with explicit MCP usage
-                compliance_prompt = f"""Generate a comprehensive compliance audit report based on this risk analysis:
+                async with compliance_client as client:
+                    compliance_agent = ChatAgent(
+                        chat_client=client,
+                        model_id=model_deployment_name,
+                        store=True
+                    )
+                    
+                    # Create comprehensive compliance report prompt focused on audit reporting only
+                    compliance_prompt = f"""Generate a comprehensive compliance audit report based on this risk analysis:
 
 Risk Analysis Result:
 {risk_response.risk_analysis}
@@ -719,52 +843,24 @@ Risk Factors: {risk_response.risk_factors}
 Compliance Notes: {risk_response.compliance_notes}
 
 Please provide a structured audit report including:
-1. Formal audit report with compliance ratings
+1. Formal compliance audit report with detailed compliance ratings
 2. Risk factor analysis and regulatory implications
-3. Executive summary of findings
-4. CREATE A FRAUD ALERT using the MCP tool for any compliance violations detected
-5. Recommendations for management action
-6. Compliance status and regulatory filing requirements
+3. Executive summary of audit findings
+4. Recommendations for management action and compliance measures
+5. Compliance status assessment and regulatory filing requirements
+6. Detailed audit conclusions with regulatory justification
 
-IMPORTANT: If you detect any compliance issues, risk violations, or suspicious patterns, 
-you MUST create a fraud alert using the Fraud Alert Manager MCP tool with appropriate:
-- Severity level (LOW, MEDIUM, HIGH, CRITICAL)
-- Status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)  
-- Action (ALLOW, BLOCK, MONITOR, INVESTIGATE)
-
-Additionally, MUST USE MCP TOOL: Please retrieve ALL existing fraud alerts using the 
-Fraud Alert Manager MCP tool to include in your compliance analysis.
-
-Focus on regulatory compliance, audit documentation, and actionable recommendations. Return your response in a structured format that I can parse."""
-                
-                start_time = asyncio.get_event_loop().time()
-                result = await agent.run(compliance_prompt)
-                end_time = asyncio.get_event_loop().time()
-                
-                processing_time = end_time - start_time
-                span.set_attribute("ai.compliance_processing_time", processing_time)
+Focus on regulatory compliance, audit documentation, and actionable compliance recommendations. 
+Provide a comprehensive compliance assessment that management can use for regulatory reporting and internal compliance processes."""
+                    
+                    start_time = asyncio.get_event_loop().time()
+                    result = await compliance_agent.run(compliance_prompt)
+                    end_time = asyncio.get_event_loop().time()
+                    
+                    processing_time = end_time - start_time
+                    span.set_attribute("ai.compliance_processing_time", processing_time)
                 
                 result_text = result.text if result and hasattr(result, 'text') else "No response from compliance agent"
-                
-                # Check for MCP tool usage indicators in the AI response
-                mcp_tool_used = False
-                mcp_actions = []
-                
-                if result_text:
-                    # Look for common MCP tool usage patterns in the response
-                    if any(keyword in result_text.lower() for keyword in ['createalert', 'create alert', 'fraud alert created', 'alert id', 'alert created', 'new alert']):
-                        mcp_tool_used = True
-                        mcp_actions.append("Alert Creation")
-                    
-                    if any(keyword in result_text.lower() for keyword in ['getallalerts', 'get all alerts', 'existing alerts', 'retrieved alerts', 'found alerts', 'alert retrieval']):
-                        mcp_tool_used = True
-                        mcp_actions.append("Alert Retrieval")
-                    
-                    # Check for general MCP tool usage indicators
-                    if any(keyword in result_text.lower() for keyword in ['mcp tool', 'fraud alert manager', 'tool used', 'using tool']):
-                        mcp_tool_used = True
-                        if "Alert Creation" not in mcp_actions and "Alert Retrieval" not in mcp_actions:
-                            mcp_actions.append("General MCP Usage")
                 
                 # Generate structured audit report locally to ensure consistency
                 local_audit = generate_audit_report_from_risk_analysis(risk_response.risk_analysis)
@@ -788,155 +884,394 @@ Focus on regulatory compliance, audit documentation, and actionable recommendati
                         requires_immediate_action=local_audit["compliance_status"]["requires_immediate_action"],
                         requires_regulatory_filing=local_audit["compliance_status"]["requires_regulatory_filing"],
                         transaction_id=risk_response.transaction_id,
-                        status="SUCCESS",
-                        mcp_tool_used=mcp_tool_used,
-                        mcp_actions=mcp_actions
+                        status="SUCCESS"
                     )
                 else:
-                    # Fallback using AI response only
-                    final_result = ComplianceAuditResponse(
-                        audit_report_id=f"AI_AUDIT_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                        audit_conclusion=result_text[:500] if len(result_text) > 500 else result_text,
-                        compliance_rating="AI_GENERATED",
-                        risk_score=0.0,
-                        transaction_id=risk_response.transaction_id,
-                        status="SUCCESS",
-                        mcp_tool_used=mcp_tool_used,
-                        mcp_actions=mcp_actions
-                    )
+                    # If MCP detection fails, raise an error instead of using fallback
+                    raise ValueError("Failed to detect MCP tool usage and no fallback allowed")
                 
-                # Record compliance decision metric with MCP usage
+                # Record compliance decision metric
                 telemetry.record_compliance_decision(
                     final_result.compliance_rating,
                     risk_response.transaction_id,
                     immediate_action=str(final_result.requires_immediate_action),
-                    mcp_enabled=str(mcp_tool_used)
+                    mcp_enabled="false"
                 )
                 
-                # Send business event with MCP information
+                # Send business event
                 send_business_event("fraud_detection.compliance.completed", {
                     "transaction_id": risk_response.transaction_id,
                     "compliance_rating": final_result.compliance_rating,
                     "immediate_action": str(final_result.requires_immediate_action),
                     "regulatory_filing": str(final_result.requires_regulatory_filing),
-                    "audit_report_id": final_result.audit_report_id,
-                    "mcp_tool_used": str(mcp_tool_used),
-                    "mcp_actions": ",".join(mcp_actions) if mcp_actions else ""
+                    "audit_report_id": final_result.audit_report_id
                 })
                 
                 span.set_attributes({
                     "compliance.rating": final_result.compliance_rating,
                     "compliance.immediate_action": final_result.requires_immediate_action,
                     "compliance.regulatory_filing": final_result.requires_regulatory_filing,
-                    "mcp.tool_used": mcp_tool_used,
-                    "mcp.actions_count": len(mcp_actions),
                     "executor.success": True,
                     "ai.enhanced": True
                 })
                 
-                span.add_event("MCP-enabled compliance report generated successfully", {
+                span.add_event("Compliance report generated successfully", {
                     "report_id": final_result.audit_report_id,
                     "compliance_rating": final_result.compliance_rating,
-                    "mcp_tool_used": str(mcp_tool_used),
                     "processing_time": processing_time
                 })
                 
                 await ctx.yield_output(final_result)
             
         except Exception as e:
-            # Fallback to local audit generation if OpenAI client fails
-            try:
-                span.add_event("Falling back to local audit generation due to error", {
-                    "error": str(e)
+            span.set_attribute("executor.success", False)
+            span.set_attribute("executor.error", str(e))
+            span.record_exception(e)
+            
+            error_result = ComplianceAuditResponse(
+                audit_report_id="ERROR_REPORT",
+                audit_conclusion=f"Error in compliance reporting: {str(e)}",
+                compliance_rating="ERROR",
+                risk_score=0.0,
+                transaction_id=risk_response.transaction_id if risk_response else "Unknown",
+                status="ERROR"
+            )
+            await ctx.yield_output(error_result)
+
+@executor
+async def fraud_alert_executor(
+    risk_response: RiskAnalysisResponse,
+    ctx: WorkflowContext[Never, FraudAlertResponse]
+) -> None:
+    """Fraud Alert Executor using Azure AI Foundry Agent with MCP tool integration."""
+    
+    with telemetry.create_processing_span(
+        executor_id="fraud_alert_executor",
+        executor_type="FraudAlert",
+        message_type="RiskAnalysisResponse"
+    ) as span:
+        
+        # Add business context
+        span.set_attributes({
+            "transaction.id": risk_response.transaction_id,
+            "executor.name": "fraud_alert_executor",
+            "workflow.step": "fraud_alert",
+            "business.process": "fraud_detection",
+            "risk.recommendation": risk_response.recommendation
+        })
+        
+        try:
+            # Send business event for fraud alert start
+            send_business_event("fraud_detection.fraud_alert.started", {
+                "transaction_id": risk_response.transaction_id,
+                "executor": "fraud_alert_executor",
+                "risk_recommendation": risk_response.recommendation
+            })
+            
+            # Configuration with validation
+            project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
+            model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME")
+            mcp_endpoint = os.environ.get("MCP_SERVER_ENDPOINT")
+            mcp_subscription_key = os.environ.get("APIM_SUBSCRIPTION_KEY")
+            
+            # Check for required parameters
+            missing_params = []
+            if not project_endpoint:
+                missing_params.append("AI_FOUNDRY_PROJECT_ENDPOINT")
+            if not model_deployment_name:
+                missing_params.append("MODEL_DEPLOYMENT_NAME")
+            if not mcp_endpoint:
+                missing_params.append("MCP_SERVER_ENDPOINT")
+            if not mcp_subscription_key:
+                missing_params.append("APIM_SUBSCRIPTION_KEY")
+            
+            span.set_attributes({
+                "ai.model": model_deployment_name or "not_configured",
+                "mcp.endpoint": mcp_endpoint or "not_configured",
+                "config.missing_params": len(missing_params)
+            })
+            
+            # Validate required parameters - fail if any are missing
+            if missing_params:
+                raise ValueError(f"Missing required parameters for fraud alert executor: {', '.join(missing_params)}")
+            
+            from azure.ai.projects import AIProjectClient
+            from azure.identity import DefaultAzureCredential
+            from azure.ai.agents.models import (
+                ListSortOrder,
+                McpTool,
+                RequiredMcpToolCall,
+                RunStepActivityDetails,
+                SubmitToolApprovalAction,
+                ToolApproval,
+            )
+            import time
+            
+            span.add_event("Starting MCP-enabled fraud alert processing")
+            
+            project_client = AIProjectClient(
+                endpoint=project_endpoint,
+                credential=DefaultAzureCredential(),
+            )
+            
+            # Initialize agent MCP tool
+            mcp_tool = McpTool(
+                server_label="fraudalertmcp",
+                server_url=mcp_endpoint,
+            )
+            mcp_tool.update_headers("Ocp-Apim-Subscription-Key", mcp_subscription_key)
+            
+            with project_client:
+                agents_client = project_client.agents
+
+                # Create fraud alert agent with MCP tool
+                agent = agents_client.create_agent(
+                    model=model_deployment_name,
+                    name="fraud-alert-agent",
+                    instructions="""
+You are a Fraud Alert Management Agent that specializes in creating and managing fraud alerts for financial transactions.
+
+Your responsibilities include:
+- Analyzing risk assessment results to determine if fraud alerts are needed
+- Creating appropriate fraud alerts using the MCP tool with correct severity and status
+- Determining proper decision actions (ALLOW, BLOCK, MONITOR, INVESTIGATE)
+- Providing clear reasoning for alert decisions
+
+When creating fraud alerts, use these enumerations:
+- severity (LOW, MEDIUM, HIGH, CRITICAL)
+- status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)
+- decision action (ALLOW, BLOCK, MONITOR, INVESTIGATE)
+
+Create fraud alerts for transactions that meet any of these criteria:
+1. High risk scores (>= 75)
+2. Sanctions-related concerns
+3. High-risk jurisdictions
+4. Suspicious patterns or anomalies
+5. Regulatory compliance violations
+
+Always create comprehensive alerts with proper risk factor documentation and clear reasoning.
+Send alerts using the MCP tool without asking for further confirmation.
+""",
+                    tools=mcp_tool.definitions,
+                )
+
+                # Create thread for communication
+                thread = agents_client.threads.create()
+                
+                # Create comprehensive message based on risk analysis
+                risk_summary = f"""
+RISK ANALYSIS SUMMARY FOR TRANSACTION {risk_response.transaction_id}
+
+Risk Analysis Result: {risk_response.risk_analysis}
+Risk Score: {risk_response.risk_score}
+Recommendation: {risk_response.recommendation}
+Risk Factors: {risk_response.risk_factors}
+Compliance Notes: {risk_response.compliance_notes}
+Status: {risk_response.status}
+
+Please analyze this risk assessment and create an appropriate fraud alert using the MCP tool if any risk factors or compliance concerns are identified. 
+
+Include all relevant transaction details, risk factors, and provide clear reasoning for the alert decision.
+"""
+                
+                message = agents_client.messages.create(
+                    thread_id=thread.id,
+                    role="user",
+                    content=f"Please analyze this risk assessment and create a fraud alert if needed: {risk_summary}",
+                )
+                
+                # Execute agent run with tool approvals
+                run = agents_client.runs.create(
+                    thread_id=thread.id, 
+                    agent_id=agent.id, 
+                    tool_resources=mcp_tool.resources
+                )
+
+                # Process run with automatic tool approvals
+                start_time = asyncio.get_event_loop().time()
+                while run.status in ["queued", "in_progress", "requires_action"]:
+                    time.sleep(1)
+                    run = agents_client.runs.get(thread_id=thread.id, run_id=run.id)
+
+                    if run.status == "requires_action" and isinstance(run.required_action, SubmitToolApprovalAction):
+                        tool_calls = run.required_action.submit_tool_approval.tool_calls
+                        if not tool_calls:
+                            agents_client.runs.cancel(thread_id=thread.id, run_id=run.id)
+                            break
+
+                        tool_approvals = []
+                        for tool_call in tool_calls:
+                            if isinstance(tool_call, RequiredMcpToolCall):
+                                try:
+                                    tool_approvals.append(
+                                        ToolApproval(
+                                            tool_call_id=tool_call.id,
+                                            approve=True,
+                                            headers=mcp_tool.headers,
+                                        )
+                                    )
+                                except Exception as e:
+                                    span.add_event("Error approving tool call", {"error": str(e)})
+
+                        if tool_approvals:
+                            agents_client.runs.submit_tool_outputs(
+                                thread_id=thread.id, run_id=run.id, tool_approvals=tool_approvals
+                            )
+
+                end_time = asyncio.get_event_loop().time()
+                processing_time = end_time - start_time
+                
+                # Collect agent response
+                messages = agents_client.messages.list(
+                    thread_id=thread.id, order=ListSortOrder.ASCENDING)
+                
+                agent_response = ""
+                for msg in messages:
+                    if msg.role == "assistant" and msg.text_messages:
+                        agent_response = msg.text_messages[-1].text.value
+                        break
+                
+                # Parse agent response to extract alert information
+                alert_created = False
+                alert_id = "NO_ALERT_CREATED"
+                severity = "LOW"
+                decision_action = "MONITOR"
+                assigned_to = "fraud_monitoring_team"
+                reasoning = "Standard monitoring based on risk assessment"
+                
+                if agent_response:
+                    # Check if alert was created
+                    if any(keyword in agent_response.lower() for keyword in ['alert created', 'createalert', 'alert id', 'fraud alert']):
+                        alert_created = True
+                        alert_id = f"ALERT_{risk_response.transaction_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    
+                    # Extract severity if mentioned
+                    if "HIGH" in agent_response.upper():
+                        severity = "HIGH"
+                    elif "CRITICAL" in agent_response.upper():
+                        severity = "CRITICAL"
+                    elif "MEDIUM" in agent_response.upper():
+                        severity = "MEDIUM"
+                    
+                    # Extract decision action if mentioned
+                    if "BLOCK" in agent_response.upper():
+                        decision_action = "BLOCK"
+                    elif "INVESTIGATE" in agent_response.upper():
+                        decision_action = "INVESTIGATE"
+                    elif "ALLOW" in agent_response.upper():
+                        decision_action = "ALLOW"
+                    
+                    reasoning = agent_response[:200] + "..." if len(agent_response) > 200 else agent_response
+                
+                final_result = FraudAlertResponse(
+                    alert_id=alert_id,
+                    alert_status="OPEN" if alert_created else "NO_ACTION_REQUIRED",
+                    severity=severity,
+                    decision_action=decision_action,
+                    alert_created=alert_created,
+                    mcp_server_response=agent_response,
+                    transaction_id=risk_response.transaction_id,
+                    status="SUCCESS",
+                    created_timestamp=datetime.now().isoformat(),
+                    assigned_to=assigned_to,
+                    reasoning=reasoning
+                )
+                
+                # Record metrics and events
+                telemetry.record_fraud_alert_created(
+                    alert_id, 
+                    severity, 
+                    decision_action,
+                    risk_response.transaction_id
+                )
+                
+                send_business_event("fraud_detection.alert.processed", {
+                    "transaction_id": risk_response.transaction_id,
+                    "alert_created": str(alert_created),
+                    "alert_id": alert_id,
+                    "severity": severity,
+                    "decision_action": decision_action,
+                    "processing_time_seconds": str(processing_time)
                 })
                 
-                local_audit = generate_audit_report_from_risk_analysis(risk_response.risk_analysis)
+                span.set_attributes({
+                    "alert.created": alert_created,
+                    "alert.id": alert_id,
+                    "alert.severity": severity,
+                    "alert.decision_action": decision_action,
+                    "mcp.processing_time": processing_time,
+                    "executor.success": True
+                })
                 
-                if "error" not in local_audit:
-                    # Extract risk score from the correct location in the audit report
-                    fallback_risk_score = 0.0
-                    if "source_analysis" in local_audit and "parsed_elements" in local_audit["source_analysis"]:
-                        parsed_elements = local_audit["source_analysis"]["parsed_elements"]
-                        fallback_risk_score = parsed_elements.get("risk_score", 0.0)
-                    
-                    fallback_result = ComplianceAuditResponse(
-                        audit_report_id=local_audit["audit_report_id"],
-                        audit_conclusion=f"{local_audit['executive_summary']['audit_conclusion']} (Fallback Mode)",
-                        compliance_rating=local_audit["compliance_status"]["compliance_rating"],
-                        risk_score=fallback_risk_score,
-                        risk_factors_identified=local_audit["detailed_findings"]["risk_factors_identified"],
-                        compliance_concerns=local_audit["detailed_findings"]["compliance_concerns"],
-                        recommendations=local_audit["detailed_findings"]["recommendations"],
-                        requires_immediate_action=local_audit["compliance_status"]["requires_immediate_action"],
-                        requires_regulatory_filing=local_audit["compliance_status"]["requires_regulatory_filing"],
-                        transaction_id=risk_response.transaction_id,
-                        status="SUCCESS_FALLBACK",
-                        mcp_tool_used=False,
-                        mcp_actions=[]
-                    )
-                    
-                    span.set_attributes({
-                        "compliance.rating": fallback_result.compliance_rating,
-                        "executor.success": True,
-                        "executor.fallback": True
-                    })
-                    
-                    await ctx.yield_output(fallback_result)
-                else:
-                    raise Exception(f"Both AI and fallback methods failed: {str(e)}")
-                    
-            except Exception as fallback_error:
-                span.set_attribute("executor.success", False)
-                span.set_attribute("executor.error", str(e))
-                span.set_attribute("fallback.error", str(fallback_error))
-                span.record_exception(e)
+                span.add_event("Fraud alert processing completed", {
+                    "alert_created": str(alert_created),
+                    "alert_id": alert_id,
+                    "processing_time": processing_time
+                })
                 
-                error_result = ComplianceAuditResponse(
-                    audit_report_id="ERROR_REPORT",
-                    audit_conclusion=f"Error in compliance reporting: {str(e)} | Fallback error: {str(fallback_error)}",
-                    compliance_rating="ERROR",
-                    risk_score=0.0,
-                    transaction_id=risk_response.transaction_id if risk_response else "Unknown",
-                    status="ERROR",
-                    mcp_tool_used=False,
-                    mcp_actions=[]
-                )
-                await ctx.yield_output(error_result)
+                # Clean up agent (optional - comment out to reuse)
+                # agents_client.delete_agent(agent.id)
+                
+                await ctx.yield_output(final_result)
+            
+        except Exception as e:
+            span.set_attribute("executor.success", False)
+            span.set_attribute("executor.error", str(e))
+            span.record_exception(e)
+            
+            error_result = FraudAlertResponse(
+                alert_id="ERROR_ALERT",
+                alert_status="ERROR",
+                severity="UNKNOWN",
+                decision_action="ERROR",
+                alert_created=False,
+                mcp_server_response=f"Error in fraud alert processing: {str(e)}",
+                transaction_id=risk_response.transaction_id if risk_response else "Unknown",
+                status="ERROR",
+                created_timestamp=datetime.now().isoformat(),
+                assigned_to="error_handling_team",
+                reasoning=f"Error occurred during fraud alert processing: {str(e)}"
+            )
+            await ctx.yield_output(error_result)
 
 async def run_fraud_detection_workflow():
-    """Execute the fraud detection workflow with comprehensive observability."""
+    """Execute the fraud detection workflow with comprehensive observability and parallel execution."""
     
     with telemetry.create_workflow_span(
         "fraud_detection_workflow",
         business_process="financial_compliance"
     ) as workflow_span:
         
-        workflow_span.add_event("Building workflow")
+        workflow_span.add_event("Building parallel workflow")
         
-        # Build workflow with three executors
+        # Build workflow with four executors - parallel execution for compliance and fraud alert
         workflow = (
             WorkflowBuilder()
             .set_start_executor(customer_data_executor)
             .add_edge(customer_data_executor, risk_analyzer_executor)
-            .add_edge(risk_analyzer_executor, compliance_report_executor)
+            .add_edge(risk_analyzer_executor, compliance_report_executor)  # Parallel path 1
+            .add_edge(risk_analyzer_executor, fraud_alert_executor)       # Parallel path 2
             .build()
         )
         
         # Create request
         request = AnalysisRequest(
-            message="Comprehensive fraud analysis using Microsoft Agent Framework with observability",
+            message="Comprehensive fraud analysis using Microsoft Agent Framework with parallel execution and observability",
             transaction_id="TX1012"
         )
         
         workflow_span.set_attributes({
             "workflow.request.transaction_id": request.transaction_id,
-            "workflow.request.message": request.message
+            "workflow.request.message": request.message,
+            "workflow.architecture": "parallel_execution",
+            "workflow.executors_count": 4
         })
         
-        workflow_span.add_event("Starting workflow execution")
+        workflow_span.add_event("Starting parallel workflow execution")
         
-        # Execute workflow with streaming and collect all events
-        final_output = None
+        # Execute workflow with streaming and collect outputs from both parallel paths
+        compliance_output = None
+        fraud_alert_output = None
         events_processed = 0
         
         async for event in workflow.run_stream(request):
@@ -948,22 +1283,33 @@ async def run_fraud_detection_workflow():
                 "events.processed": events_processed
             })
             
-            # Capture final workflow output
+            # Capture outputs from both parallel executors
             if isinstance(event, WorkflowOutputEvent):
-                final_output = event.data
-                workflow_span.add_event("Workflow completed successfully", {
-                    "output.type": type(final_output).__name__
-                })
+                if isinstance(event.data, ComplianceAuditResponse):
+                    compliance_output = event.data
+                    workflow_span.add_event("Compliance report completed", {
+                        "compliance.rating": compliance_output.compliance_rating,
+                        "compliance.risk_score": compliance_output.risk_score
+                    })
+                elif isinstance(event.data, FraudAlertResponse):
+                    fraud_alert_output = event.data
+                    workflow_span.add_event("Fraud alert completed", {
+                        "alert.created": fraud_alert_output.alert_created,
+                        "alert.severity": fraud_alert_output.severity,
+                        "alert.decision_action": fraud_alert_output.decision_action
+                    })
         
         workflow_span.set_attributes({
             "workflow.events_processed": events_processed,
-            "workflow.success": final_output is not None
+            "workflow.compliance_success": compliance_output is not None,
+            "workflow.fraud_alert_success": fraud_alert_output is not None,
+            "workflow.parallel_success": compliance_output is not None and fraud_alert_output is not None
         })
         
-        return final_output
+        return compliance_output, fraud_alert_output
 
 async def main():
-    """Main function with observability setup and workflow execution."""
+    """Main function with observability setup and parallel workflow execution."""
     
     # Initialize observability first
     initialize_telemetry()
@@ -972,72 +1318,96 @@ async def main():
     with telemetry.create_workflow_span("fraud_detection_application") as main_span:
         
         trace_id = get_current_trace_id()
-        print(f"🔍 Starting fraud detection workflow")
+        print(f"🔍 Starting Challenge 3 fraud detection workflow with observability")
         print(f"📊 Trace ID: {trace_id}")
         
         main_span.set_attributes({
-            "application.name": "fraud_detection_system",
-            "application.version": "1.0.0",
+            "application.name": "fraud_detection_system_challenge2",
+            "application.version": "2.0.0",
+            "application.architecture": "parallel_execution",
             "trace.id": trace_id or "unknown"
         })
         
         try:
-            main_span.add_event("Starting workflow execution")
-            result = await run_fraud_detection_workflow()
+            main_span.add_event("Starting parallel workflow execution")
+            compliance_result, fraud_alert_result = await run_fraud_detection_workflow()
             
-            # Display results with enhanced observability
-            if result and isinstance(result, ComplianceAuditResponse):
+            # Record results in telemetry
+            main_span.set_attributes({
+                "result.compliance_success": compliance_result is not None,
+                "result.fraud_alert_success": fraud_alert_result is not None,
+                "result.parallel_success": compliance_result is not None and fraud_alert_result is not None
+            })
+            
+            if compliance_result:
                 main_span.set_attributes({
-                    "result.audit_report_id": result.audit_report_id,
-                    "result.transaction_id": result.transaction_id,
-                    "result.compliance_rating": result.compliance_rating,
-                    "result.risk_score": result.risk_score,
-                    "result.requires_immediate_action": result.requires_immediate_action,
-                    "result.requires_regulatory_filing": result.requires_regulatory_filing,
-                    "result.mcp_tool_used": result.mcp_tool_used,
-                    "result.mcp_actions_count": len(result.mcp_actions)
+                    "compliance.audit_report_id": compliance_result.audit_report_id,
+                    "compliance.transaction_id": compliance_result.transaction_id,
+                    "compliance.rating": compliance_result.compliance_rating,
+                    "compliance.risk_score": compliance_result.risk_score,
+                    "compliance.immediate_action": compliance_result.requires_immediate_action,
+                    "compliance.regulatory_filing": compliance_result.requires_regulatory_filing
                 })
-                
-                print(f"\n✅ Workflow completed successfully!")
-                print(f"📋 Audit Report ID: {result.audit_report_id}")
-                print(f"🔢 Transaction: {result.transaction_id}")
-                print(f"📊 Status: {result.status}")
-                print(f"🔍 Compliance Rating: {result.compliance_rating}")
-                print(f"📈 Risk Score: {result.risk_score:.2f}")
-                print(f"📄 Conclusion: {result.audit_conclusion[:100]}...")
-                
-                # Display MCP Tool Usage Information
-                if result.mcp_tool_used:
-                    print(f"🔧 MCP Tool Used: ✅ YES")
-                    if result.mcp_actions:
-                        print(f"🔧 MCP Actions: {', '.join(result.mcp_actions)}")
-                else:
-                    print(f"🔧 MCP Tool Used: ❌ NO")
-                
-                if result.requires_immediate_action:
-                    print("⚠️  IMMEDIATE ACTION REQUIRED")
-                if result.requires_regulatory_filing:
-                    print("📋 REGULATORY FILING REQUIRED")
-                
-                main_span.add_event("Results displayed successfully")
-            else:
-                main_span.set_attribute("result.success", False)
-                print("❌ No valid result returned from workflow")
             
-            return result
+            if fraud_alert_result:
+                main_span.set_attributes({
+                    "fraud_alert.alert_id": fraud_alert_result.alert_id,
+                    "fraud_alert.transaction_id": fraud_alert_result.transaction_id,
+                    "fraud_alert.created": fraud_alert_result.alert_created,
+                    "fraud_alert.severity": fraud_alert_result.severity,
+                    "fraud_alert.decision_action": fraud_alert_result.decision_action,
+                    "fraud_alert.status": fraud_alert_result.alert_status
+                })
+            
+            print(f"\n🎯 4-EXECUTOR PARALLEL WORKFLOW RESULTS WITH OBSERVABILITY")
+            print(f"=" * 70)
+            
+            # Display Compliance Report results
+            if compliance_result and isinstance(compliance_result, ComplianceAuditResponse):
+                print(f"\n📋 COMPLIANCE REPORT EXECUTOR:")
+                print(f"   Status: {compliance_result.status}")
+                print(f"   Transaction ID: {compliance_result.transaction_id}")
+                print(f"   Audit Report ID: {compliance_result.audit_report_id}")
+                print(f"   Compliance Rating: {compliance_result.compliance_rating}")
+                print(f"   Risk Score: {compliance_result.risk_score:.2f}")
+                print(f"   Conclusion: {compliance_result.audit_conclusion[:100]}...")
+                
+                if compliance_result.requires_immediate_action:
+                    print("   ⚠️  IMMEDIATE ACTION REQUIRED")
+                if compliance_result.requires_regulatory_filing:
+                    print("   📋 REGULATORY FILING REQUIRED")
+            else:
+                print(f"\n� COMPLIANCE REPORT EXECUTOR: ❌ FAILED")
+            
+            # Display Fraud Alert results
+            if fraud_alert_result and isinstance(fraud_alert_result, FraudAlertResponse):
+                print(f"\n🚨 FRAUD ALERT EXECUTOR:")
+                print(f"   Status: {fraud_alert_result.status}")
+                print(f"   Transaction ID: {fraud_alert_result.transaction_id}")
+                print(f"   Alert ID: {fraud_alert_result.alert_id}")
+                print(f"   Alert Created: {'✅ YES' if fraud_alert_result.alert_created else '❌ NO'}")
+                print(f"   Severity: {fraud_alert_result.severity}")
+                print(f"   Decision Action: {fraud_alert_result.decision_action}")
+                print(f"   Alert Status: {fraud_alert_result.alert_status}")
+                print(f"   Assigned To: {fraud_alert_result.assigned_to}")
+                if fraud_alert_result.created_timestamp:
+                    print(f"   Created At: {fraud_alert_result.created_timestamp}")
+            else:
+                print(f"\n� FRAUD ALERT EXECUTOR: ❌ FAILED")
+            
+            main_span.add_event("Parallel workflow results displayed successfully")
+            
+            return compliance_result, fraud_alert_result
             
         except Exception as e:
             main_span.set_attribute("application.error", str(e))
             main_span.record_exception(e)
-            print(f"❌ Workflow execution failed: {str(e)}")
-            return None
+            print(f"❌ Parallel workflow execution failed: {str(e)}")
+            return None, None
         
         finally:
-            # Flush telemetry before finishing
             flush_telemetry()
-            print(f"🔍 Trace completed: {trace_id}")
-            print("📊 Check Application Insights or configured observability backend for detailed traces")
-            print("📋 Custom events should appear in Application Insights within 2-5 minutes")
+            print(f"\n🔍 Trace completed: {trace_id}")
 
 if __name__ == "__main__":
-    result = asyncio.run(main())
+    compliance, fraud_alert = asyncio.run(main())

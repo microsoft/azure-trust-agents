@@ -116,7 +116,7 @@ class TelemetryManager:
             print("📊 Telemetry flushed to Application Insights")
     
     def send_business_event(self, event_name: str, properties: Dict[str, Any]):
-        """Send business event using both OpenTelemetry and Application Insights approaches."""
+        """Send business event using multiple OpenTelemetry approaches for comprehensive tracing."""
         
         # Method 1: OpenTelemetry Event (guaranteed to appear in traces)
         current_span = trace.get_current_span()
@@ -132,7 +132,20 @@ class TelemetryManager:
             event_span.set_attribute("event.type", "business_metric")
             event_span.set_attribute("event.name", event_name)
             
-        # Method 3: Traditional Application Insights (legacy support)
+        # Method 3: Create additional processing span for business event  
+        with self.tracer.start_as_current_span(
+            f"business_process.{event_name}",
+            kind=SpanKind.INTERNAL,
+            attributes={
+                "business.event": event_name,
+                "business.category": event_name.split('.')[0] if '.' in event_name else "general",
+                **{f"business.{k}": str(v) for k, v in properties.items()}
+            }
+        ) as process_span:
+            process_span.set_attribute("process.type", "business_event_processing")
+            process_span.add_event(f"Business event processed: {event_name}")
+            
+        # Method 4: Traditional Application Insights (legacy support)
         if self.telemetry_client:
             try:
                 self.telemetry_client.track_event(event_name, properties)
@@ -167,6 +180,21 @@ class TelemetryManager:
             }
             attributes.update(kwargs)
             self.compliance_decision_counter.add(1, attributes)
+    
+    def record_fraud_alert_created(self, alert_id: str, severity: str, decision_action: str, transaction_id: str):
+        """Record fraud alert creation."""
+        if self.telemetry_client:
+            # Send custom event for fraud alert
+            self.telemetry_client.track_event(
+                "FraudAlertCreated",
+                {
+                    "alert_id": alert_id,
+                    "severity": severity,
+                    "decision_action": decision_action,
+                    "transaction_id": transaction_id,
+                    "timestamp": datetime.now().isoformat()
+                }
+            )
     
     def create_cosmos_span(self, operation: str, collection: str, **attributes):
         """Create a span for Cosmos DB operations."""
@@ -205,6 +233,44 @@ class TelemetryManager:
         if current_span:
             return format_trace_id(current_span.get_span_context().trace_id)
         return None
+    
+    def create_detailed_operation_span(self, operation_name: str, operation_type: str, **attributes):
+        """Create a detailed operation span with comprehensive attributes."""
+        return self.tracer.start_as_current_span(
+            f"operation.{operation_type}.{operation_name}",
+            kind=SpanKind.INTERNAL,
+            attributes={
+                "operation.name": operation_name,
+                "operation.type": operation_type,
+                "operation.timestamp": datetime.now().isoformat(),
+                **attributes
+            }
+        )
+    
+    def create_ai_interaction_span(self, model_name: str, operation: str, **attributes):
+        """Create a span specifically for AI model interactions."""
+        return self.tracer.start_as_current_span(
+            f"ai_interaction.{model_name}.{operation}",
+            kind=SpanKind.CLIENT,
+            attributes={
+                "ai.model": model_name,
+                "ai.operation": operation,
+                "ai.provider": "azure_ai_foundry",
+                **attributes
+            }
+        )
+    
+    def create_data_operation_span(self, data_source: str, operation: str, **attributes):
+        """Create a span for data operations."""
+        return self.tracer.start_as_current_span(
+            f"data_operation.{data_source}.{operation}",
+            kind=SpanKind.CLIENT,
+            attributes={
+                "data.source": data_source,
+                "data.operation": operation,
+                **attributes
+            }
+        )
 
 
 class CosmosDbInstrumentation:
@@ -214,23 +280,50 @@ class CosmosDbInstrumentation:
         self.telemetry = telemetry_manager
     
     def instrument_transaction_get(self, func):
-        """Decorator to instrument transaction retrieval."""
+        """Decorator to instrument transaction retrieval with detailed sub-spans."""
         def wrapper(transaction_id: str, *args, **kwargs):
             with self.telemetry.create_cosmos_span(
                 "query", "Transactions", 
                 **{"transaction.id": transaction_id}
             ) as span:
                 try:
-                    result = func(transaction_id, *args, **kwargs)
+                    # Create sub-span for query preparation
+                    with self.telemetry.tracer.start_as_current_span("cosmos_db.query_preparation") as prep_span:
+                        prep_span.set_attributes({
+                            "db.operation_type": "select_by_id",
+                            "db.query_target": "transaction"
+                        })
+                        prep_span.add_event("Query preparation started")
                     
-                    if "error" not in result:
-                        span.set_attribute("transaction.amount", result.get("amount", 0))
-                        span.set_attribute("transaction.currency", result.get("currency", ""))
-                        span.set_attribute("transaction.destination", result.get("destination_country", ""))
-                        span.set_attribute("cosmos_db.success", True)
-                    else:
-                        span.set_attribute("cosmos_db.success", False)
-                        span.set_attribute("cosmos_db.error", result["error"])
+                    # Create sub-span for query execution
+                    with self.telemetry.tracer.start_as_current_span("cosmos_db.query_execution") as exec_span:
+                        exec_span.set_attributes({
+                            "db.statement_type": "SELECT",
+                            "db.collection": "Transactions"
+                        })
+                        exec_span.add_event("Executing transaction query")
+                        
+                        result = func(transaction_id, *args, **kwargs)
+                        
+                        exec_span.add_event("Query execution completed")
+                    
+                    # Create sub-span for result processing  
+                    with self.telemetry.tracer.start_as_current_span("cosmos_db.result_processing") as result_span:
+                        result_span.set_attributes({
+                            "db.result_type": "transaction_data",
+                            "db.success": "error" not in result
+                        })
+                        
+                        if "error" not in result:
+                            span.set_attribute("transaction.amount", result.get("amount", 0))
+                            span.set_attribute("transaction.currency", result.get("currency", ""))
+                            span.set_attribute("transaction.destination", result.get("destination_country", ""))
+                            span.set_attribute("cosmos_db.success", True)
+                            result_span.add_event("Transaction data parsed successfully")
+                        else:
+                            span.set_attribute("cosmos_db.success", False)
+                            span.set_attribute("cosmos_db.error", result["error"])
+                            result_span.add_event("Transaction retrieval failed")
                     
                     return result
                     
@@ -243,24 +336,51 @@ class CosmosDbInstrumentation:
         return wrapper
     
     def instrument_customer_get(self, func):
-        """Decorator to instrument customer retrieval."""
+        """Decorator to instrument customer retrieval with detailed sub-spans."""
         def wrapper(customer_id: str, *args, **kwargs):
             with self.telemetry.create_cosmos_span(
                 "query", "Customers",
                 **{"customer.id": customer_id}
             ) as span:
                 try:
-                    result = func(customer_id, *args, **kwargs)
+                    # Create sub-span for customer query preparation
+                    with self.telemetry.tracer.start_as_current_span("cosmos_db.customer_query_prep") as prep_span:
+                        prep_span.set_attributes({
+                            "db.operation_type": "select_customer_by_id",
+                            "customer.lookup_id": customer_id
+                        })
+                        prep_span.add_event("Customer query preparation started")
                     
-                    if "error" not in result:
-                        span.set_attribute("customer.country", result.get("country", ""))
-                        span.set_attribute("customer.account_age", result.get("account_age_days", 0))
-                        span.set_attribute("customer.device_trust_score", result.get("device_trust_score", 0))
-                        span.set_attribute("customer.past_fraud", result.get("past_fraud", False))
-                        span.set_attribute("cosmos_db.success", True)
-                    else:
-                        span.set_attribute("cosmos_db.success", False)
-                        span.set_attribute("cosmos_db.error", result["error"])
+                    # Create sub-span for customer query execution
+                    with self.telemetry.tracer.start_as_current_span("cosmos_db.customer_query_exec") as exec_span:
+                        exec_span.set_attributes({
+                            "db.statement_type": "SELECT", 
+                            "db.collection": "Customers"
+                        })
+                        exec_span.add_event("Executing customer query")
+                        
+                        result = func(customer_id, *args, **kwargs)
+                        
+                        exec_span.add_event("Customer query execution completed")
+                    
+                    # Create sub-span for customer data processing
+                    with self.telemetry.tracer.start_as_current_span("cosmos_db.customer_data_processing") as process_span:
+                        process_span.set_attributes({
+                            "db.result_type": "customer_profile",
+                            "db.success": "error" not in result
+                        })
+                        
+                        if "error" not in result:
+                            span.set_attribute("customer.country", result.get("country", ""))
+                            span.set_attribute("customer.account_age", result.get("account_age_days", 0))
+                            span.set_attribute("customer.device_trust_score", result.get("device_trust_score", 0))
+                            span.set_attribute("customer.past_fraud", result.get("past_fraud", False))
+                            span.set_attribute("cosmos_db.success", True)
+                            process_span.add_event("Customer profile processed successfully")
+                        else:
+                            span.set_attribute("cosmos_db.success", False)
+                            span.set_attribute("cosmos_db.error", result["error"])
+                            process_span.add_event("Customer retrieval failed")
                     
                     return result
                     

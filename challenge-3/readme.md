@@ -276,15 +276,13 @@ One of the most powerful observability features in our fraud detection system is
 
 Our system creates a **unique trace ID** for each transaction that flows through the entire fraud detection pipeline. This trace ID connects all related operations - from initial data retrieval through AI risk assessment to final compliance decisions.
 
-In our use case, for each transaction processed (unique trace ID), we will have 12 traces. 
-For a run of 15 transactions, I can see 180 traces.
 
 1. Go to **Azure Portal → Application Insights → [Your Resource]**
 2. Navigate to **Investigate → Transaction Search** 
 3. Click on **See all data in the last 4h**
 4. On the top of your page, select your **Event types = Trace**
 
-In our use case, for each transaction processed (unique trace ID), we will have 12 traces. In the example below, for a run of 15 transactions, I can see 180 traces
+In our use case, for each transaction processed (unique trace ID), we will have 42 traces. In the example below, for a run of 10 transactions, I can see 420 traces.
 
 ![alt text](images/tracing1.png)
 
@@ -308,6 +306,8 @@ In our use case, for each transaction processed (unique trace ID), we will have 
 We can now see a `workflow.run` component, with 3 `executor.process` created corresponding to our 3 agents. 
 
 8. When clicking on any row `invoke_agent XXX` you can find a detailed section on what happens on the agent, divided into `Internal Properties` and `External Properties`. On the latter, we can find several signals that are important for our agent tracing, such as the input/output messages in/out of our AI Foundry Agent, as well as number of tokens produced for both input and output.
+
+This pane measures end-to-end performance of the AI-driven fraud detection workflow, tracking execution time, event sequencing, and model invocation latency. It provides visibility into system efficiency, process bottlenecks, and compliance traceability across the transaction lifecycle.
 
 ![alt text](images/tracing4.png)
 

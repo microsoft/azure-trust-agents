@@ -20,7 +20,6 @@ azure-identity==1.23.1
 azure-search==1.0.0b2
 azure-search-documents==11.5.3
 azure-storage-blob==12.25.1
-mem0ai==0.1.117
 certifi==2025.7.9
 cffi==1.17.1
 chardet==5.2.0
@@ -134,7 +133,7 @@ urllib3==2.5.0
 uv==0.9.5
 uvicorn==0.35.0
 wcwidth==0.2.13
-websockets==15.0
+websockets==15.0.1
 Werkzeug==3.1.1
 yarl==1.20.1
 zipp==3.23.0
@@ -144,3 +143,5 @@ azure-cosmos
 azure-identity
 semantic-kernel==1.36.0
 agent-framework-core
+agent-framework-azure-ai
+applicationinsights
