@@ -6,6 +6,10 @@ In this challenge, we will build a complete fraud detection system by creating t
 
 This comprehensive guide covers **step-by-step agent creation** with detailed instructions for building each specialized agent, explores the **hybrid approach** that balances rule-based regulatory compliance with AI-powered pattern recognition, demonstrates **sequential workflow orchestration** to connect agents into a cohesive pipeline and provides **complete examples** of what each agent produces in the fraud detection process.
 
+The part of the architecture we will be implementing in this challenge is as described below, focusing on the three core agents and their sequential orchestration:
+
+![Architecture](./images/architecture-1.png)
+
 The orchestration will follow this architecture:
 
 ```

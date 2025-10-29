@@ -30,8 +30,7 @@ In this hackathon we will leverage the **Microsoft Agent Framework** to create a
 
 The workflow follows the principle of **"right tool for the right job"** - using Azure AI Foundry agents for conversational AI capabilities and MCP integration where external system connectivity is required. After risk analysis, both compliance reporting and fraud alerting execute in parallel for optimal performance and comprehensive coverage. This orchestration ensures continuous monitoring of flagged events, rapid response to high-risk activities, and robust compliance reporting with full observability.
 
-
-<img width="1907" height="785" alt="image" src="https://github.com/user-attachments/assets/48649cf4-47c8-47c4-9ef0-ad0b2188f73f" />
+![Architecture](./images/architecture.png)
 
 
 ## Requirements

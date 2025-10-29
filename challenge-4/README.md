@@ -6,6 +6,10 @@ Welcome to Challenge 4! In this challenge, you'll deploy and integrate a web fro
 
 This challenge demonstrates how to connect your AI-powered fraud detection agents with a production-ready user interface, enabling business users to monitor, analyze, and manage fraud alerts through an intuitive web interface. You'll deploy the frontend on **Azure Container Apps** and consume the API backend securely through **Azure API Management**, creating a complete end-to-end solution.
 
+See below the pieces of the architecture we will be implementing in this challenge:
+
+![Architecture](./images/architecture-4.png)
+
 **What you'll master:** You'll gain expertise in deploying containerized web applications on Azure Container Apps with enterprise-grade security and scalability. You'll learn Azure API Management integration to securely expose backend APIs to frontend applications. You'll develop skills in building end-to-end fraud detection solutions that combine AI agents with modern web interfaces. 
 
 By the end of this challenge, you'll have a complete fraud alert management solution that business users can interact with through an intuitive web interface, bringing your AI agents to life for end users.
