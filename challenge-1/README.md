@@ -91,7 +91,6 @@ python customer_data_agent.py
 
 **To run individually**:
 ```bash
-cd agents
 python risk_analyser_agent.py
 ```
 
@@ -121,7 +120,6 @@ python risk_analyser_agent.py
 
 **To run individually**:
 ```bash
-cd agents
 python compliance_report_agent.py
 ```
 
@@ -163,13 +161,7 @@ After successfully creating the agents, each script will output a unique agent I
 
 Now comes the exciting part - executing the complete fraud detection pipeline using Microsoft's Agent Framework Sequential Builder pattern through an interactive Jupyter notebook. This step demonstrates enterprise-grade multi-agent orchestration where each agent automatically receives the output from the previous agent in the chain. The workflow will analyze a sample transaction (TX2002) through three sequential stages: data retrieval from Cosmos DB, AI-powered risk analysis, and comprehensive compliance audit reporting.
 
-Create a new terminal and run:
-```bash
-cd challenge-1/workflow
-# Open the Jupyter notebook
-jupyter notebook sequential_workflow.ipynb
-```
-Alternatively, you can open the notebook directly in VS Code for a seamless experience.
+Open the notebook directly in VS Code for a seamless experience in `workflow/sequential_workflow.py`
 
 ## Notebook Walkthrough
 

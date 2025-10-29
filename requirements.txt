@@ -145,3 +145,4 @@ semantic-kernel==1.36.0
 agent-framework-core
 agent-framework-azure-ai
 applicationinsights
+agent-framework-devui
