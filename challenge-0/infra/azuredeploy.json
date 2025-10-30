@@ -288,7 +288,7 @@
       "apiVersion": "2024-10-01",
       "name": "[format('{0}/{1}', variables('aiFoundryName'), 'gpt-4.1-mini')]",
       "sku": {
-        "capacity": 200,
+        "capacity": 100,
         "name": "GlobalStandard"
       },
       "properties": {
@@ -299,26 +299,6 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
-      "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('aiFoundryName'), 'text-embedding-ada-002')]",
-      "sku": {
-        "capacity": 200,
-        "name": "GlobalStandard"
-      },
-      "properties": {
-        "model": {
-          "name": "text-embedding-ada-002",
-          "format": "OpenAI"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('aiFoundryName'), 'gpt-4.1-mini')]"
-
       ]
     },
     {
