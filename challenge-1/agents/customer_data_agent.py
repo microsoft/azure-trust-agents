@@ -50,44 +50,44 @@ async def main():
     try:
         async with AzureCliCredential() as credential:
             # Create the AzureAIAgentClient
-            client = AzureAIAgentClient(
+            async with AzureAIAgentClient(
                 project_endpoint=project_endpoint,
                 model_deployment_name=model_deployment_name,
                 async_credential=credential
-            )
-            
-            agent = client.create_agent(
-                name="CustomerDataAgent",
-                store=True,  # Make agent persistent in Azure AI Foundry
-                instructions="""You are a Data Ingestion Agent responsible for preparing structured input for fraud detection. 
-                You will receive raw transaction records and customer profiles. Your task is to:
-                - Normalize fields (e.g., currency, timestamps, amounts)
-                - Remove or flag incomplete data
-                - Enrich each transaction with relevant customer metadata (e.g., account age, country, device info)
-                - Output a clean JSON object per transaction with unified structure
+            ) as client:
 
-                You have access to the following functions:
-                - get_customer_data: Fetch customer details by customer_id
-                - get_customer_transactions: Get all transactions for a customer
+                agent = client.create_agent(
+                    name="CustomerDataAgent",
+                    store=True,  # Make agent persistent in Azure AI Foundry
+                    instructions="""You are a Data Ingestion Agent responsible for preparing structured input for fraud detection. 
+                    You will receive raw transaction records and customer profiles. Your task is to:
+                    - Normalize fields (e.g., currency, timestamps, amounts)
+                    - Remove or flag incomplete data
+                    - Enrich each transaction with relevant customer metadata (e.g., account age, country, device info)
+                    - Output a clean JSON object per transaction with unified structure
 
-                Use these functions to enrich and validate the transaction data.
-                Ensure the format is consistent and ready for analysis.
-                """,
-                tools=[
-                    get_customer_data,
-                    get_customer_transactions,
-                ],
-            )
+                    You have access to the following functions:
+                    - get_customer_data: Fetch customer details by customer_id
+                    - get_customer_transactions: Get all transactions for a customer
 
-            # Test the agent with a simple query
-            print("\n🧪 Testing the agent with a sample query...")
-            try:
-                result = await agent.run("Analyze customer CUST1005 comprehensively.")
-                print(f"✅ Agent response: {result.text}")
-            except Exception as test_error:
-                print(f"⚠️  Agent test failed (but agent was still created): {test_error}")
-            
-            return agent
+                    Use these functions to enrich and validate the transaction data.
+                    Ensure the format is consistent and ready for analysis.
+                    """,
+                    tools=[
+                        get_customer_data,
+                        get_customer_transactions,
+                    ],
+                )
+
+                # Test the agent with a simple query
+                print("\n🧪 Testing the agent with a sample query...")
+                try:
+                    result = await agent.run("Analyze customer CUST1005 comprehensively.")
+                    print(f"✅ Agent response: {result.text}")
+                except Exception as test_error:
+                    print(f"⚠️  Agent test failed (but agent was still created): {test_error}")
+                
+                return agent
     except Exception as e:
         print(f"❌ Error creating agent: {e}")
         print("Make sure you have the proper Azure credentials configured.")
