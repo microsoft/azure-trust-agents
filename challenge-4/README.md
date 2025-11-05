@@ -74,7 +74,7 @@ Before deploying the frontend, you need to ensure your API Management instance i
 In case you haven't already, load your environment variables from your root folder:
 
 ```bash
-source ./env
+source .env
 ```
 
 #### Configure CORS Policy
