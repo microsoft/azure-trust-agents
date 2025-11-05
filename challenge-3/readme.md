@@ -259,7 +259,14 @@ Create a custom Azure Monitor Workbook with these sections:
 1. Go to **Azure Portal → Application Insights → [Your Resource]**
 2. Navigate to **Workbooks** in the left menu
 3. Click **+ New**
+
+
+<img src="images/monitor1.png" alt="alt text" width="400"/>
+
 4. Click **Advanced Editor** (</> icon)
+
+![alt text](images/monitor2.png)
+
 5. **Delete default content** and **paste your JSON** from `workbooks/azure-workbook-template.json`
 6. Click **Apply**
 7. **Save** your workbook with a nice title such as `My First Workflow Dashboard` under your resource group.
