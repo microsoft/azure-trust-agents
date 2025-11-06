@@ -3,6 +3,8 @@ import os
 from typing import Annotated
 from azure.identity.aio import AzureCliCredential
 from agent_framework.azure import AzureAIAgentClient
+from agent_framework import ChatAgent
+from azure.ai.projects.aio import AIProjectClient
 from azure.cosmos import CosmosClient
 from dotenv import load_dotenv
 from pydantic import Field
@@ -49,35 +51,43 @@ def get_customer_transactions(customer_id: str) -> list:
 async def main():
     try:
         async with AzureCliCredential() as credential:
-            # Create the AzureAIAgentClient
-            client = AzureAIAgentClient(
-                project_endpoint=project_endpoint,
-                model_deployment_name=model_deployment_name,
-                async_credential=credential
-            )
-            
-            agent = client.create_agent(
-                name="CustomerDataAgent",
-                store=True,  # Make agent persistent in Azure AI Foundry
-                instructions="""You are a Data Ingestion Agent responsible for preparing structured input for fraud detection. 
-                You will receive raw transaction records and customer profiles. Your task is to:
-                - Normalize fields (e.g., currency, timestamps, amounts)
-                - Remove or flag incomplete data
-                - Enrich each transaction with relevant customer metadata (e.g., account age, country, device info)
-                - Output a clean JSON object per transaction with unified structure
+            async with AIProjectClient(
+                endpoint=project_endpoint,
+                credential=credential
+            ) as project_client:
+                
+                # Create persistent agent
+                created_agent = await project_client.agents.create_agent(
+                    model=model_deployment_name,
+                    name="CustomerDataAgent",
+                    instructions="""You are a Data Ingestion Agent responsible for preparing structured input for fraud detection. 
+                    You will receive raw transaction records and customer profiles. Your task is to:
+                    - Normalize fields (e.g., currency, timestamps, amounts)
+                    - Remove or flag incomplete data
+                    - Enrich each transaction with relevant customer metadata (e.g., account age, country, device info)
+                    - Output a clean JSON object per transaction with unified structure
 
                 You have access to the following functions:
                 - get_customer_data: Fetch customer details by customer_id
                 - get_customer_transactions: Get all transactions for a customer
 
-                Use these functions to enrich and validate the transaction data.
-                Ensure the format is consistent and ready for analysis.
-                """,
-                tools=[
-                    get_customer_data,
-                    get_customer_transactions,
-                ],
-            )
+                    Use these functions to enrich and validate the transaction data.
+                    Ensure the format is consistent and ready for analysis.
+                    """
+                )
+                
+                # Wrap agent with tools for usage
+                agent = ChatAgent(
+                    chat_client=AzureAIAgentClient(
+                        project_client=project_client,
+                        agent_id=created_agent.id
+                    ),
+                    tools=[
+                        get_customer_data,
+                        get_customer_transactions,
+                    ],
+                    store=True
+                )
 
             # Test the agent with a simple query
             print("\n🧪 Testing the agent with a sample query...")

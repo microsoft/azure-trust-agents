@@ -4,7 +4,9 @@ import json
 from datetime import datetime, timedelta
 from typing import Annotated, List, Dict, Any, Optional
 from azure.identity.aio import AzureCliCredential
+from agent_framework import ChatAgent
 from agent_framework.azure import AzureAIAgentClient
+from azure.ai.projects.aio import AIProjectClient
 from dotenv import load_dotenv
 from pydantic import Field
 import logging
@@ -318,17 +320,15 @@ async def main():
     
     try:
         async with AzureCliCredential() as credential:
-            # Create the AzureAIAgentClient
-            client = AzureAIAgentClient(
-                project_endpoint=project_endpoint,
-                model_deployment_name=model_deployment_name,
-                async_credential=credential
-            )
-            
-            # Create Compliance Report Agent
-            agent = client.create_agent(
-                name="ComplianceAuditReportAgent",
-                store=True,  # Explicitly set store=True to avoid warnings
+            async with AIProjectClient(
+                endpoint=project_endpoint,
+                credential=credential
+            ) as project_client:
+                
+                # Create persistent agent
+                created_agent = await project_client.agents.create_agent(
+                    model=model_deployment_name,
+                    name="ComplianceAuditReportAgent",
                     instructions="""You are a Compliance Audit Report Agent specialized in generating formal audit reports based on risk analysis findings from the Risk Analyser Agent.
 
 Your primary responsibilities include:
@@ -372,21 +372,29 @@ Your primary responsibilities include:
 - Include proper audit trails and timestamps
 - Focus on translating risk findings into actionable audit conclusions
 
-You must ensure all audit reports are comprehensive, accurate, and suitable for internal audit review. Regulatory compliance details are handled by the Risk Analyser Agent.""",
-                    
+You must ensure all audit reports are comprehensive, accurate, and suitable for internal audit review. Regulatory compliance details are handled by the Risk Analyser Agent."""
+                )
+                
+                # Wrap agent with tools for usage
+                agent = ChatAgent(
+                    chat_client=AzureAIAgentClient(
+                        project_client=project_client,
+                        agent_id=created_agent.id
+                    ),
                     tools=[
                         parse_risk_analysis_result,
                         generate_audit_report_from_risk_analysis,
                         generate_executive_audit_summary
-                    ]
-            )
-            
-            print(f"✅ Created Compliance Audit Report Agent: {agent.id}")
-            
-            # Test the agent with a sample risk analysis output
-            print(f"\n🔍 Testing Compliance Audit Report Agent...")
-            
-            sample_risk_analysis = """Risk Analysis Complete for Transaction TX1001:
+                    ],
+                    store=True
+                )
+                
+                print(f"✅ Created Compliance Audit Report Agent: {created_agent.id}")
+                
+                # Test the agent with a sample risk analysis output
+                print(f"\n🔍 Testing Compliance Audit Report Agent...")
+                
+                sample_risk_analysis = """Risk Analysis Complete for Transaction TX1001:
 
 Customer: C1001 (John Smith)
 Transaction Amount: $15,000 USD
@@ -405,7 +413,7 @@ The transaction exhibits multiple high-risk characteristics requiring immediate 
 
 Recommendation: BLOCK TRANSACTION - Enhanced due diligence required before processing."""
 
-            test_prompt = f"""Based on the following Risk Analyser Agent output, please generate a comprehensive audit report:
+                test_prompt = f"""Based on the following Risk Analyser Agent output, please generate a comprehensive audit report:
 
 {sample_risk_analysis}
 
@@ -417,13 +425,13 @@ Please provide:
 
 Focus on translating the risk analysis into clear audit findings and actionable recommendations for management review."""
 
-            result = await agent.run(test_prompt)
-            
-            print(f"\n📋 COMPLIANCE AUDIT REPORT AGENT RESPONSE:")
-            print("="*60)
-            print(result.text)
-            
-            return agent
+                result = await agent.run(test_prompt)
+                
+                print(f"\n📋 COMPLIANCE AUDIT REPORT AGENT RESPONSE:")
+                print("="*60)
+                print(result.text)
+                
+                return agent
             
     except Exception as e:
         print(f"❌ Error creating Compliance Report Agent: {e}")
