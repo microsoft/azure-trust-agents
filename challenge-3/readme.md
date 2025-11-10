@@ -290,7 +290,7 @@ Our system creates a **unique trace ID** for each transaction that flows through
 
 1. Go to **Azure Portal → Application Insights → [Your Resource]**
 2. Navigate to **Investigate → Transaction Search** 
-3. Click on **See all data in the last 4h**
+3. Click on **See all data in the last 24h**
 4. On the top of your page, select your **Event types = Trace**
 
 In our use case, for each transaction processed (unique trace ID), we will have 42 traces. In the example below, for a run of 10 transactions, I can see 420 traces.
