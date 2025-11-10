@@ -44,7 +44,7 @@ Now, time to deploy our resources to Azure!
 - servicePrincipalObjectId: Leave this field empty.
 - resource group: Introduce the unique name for your resource group (example: rg-user01-yourinitials).
 
-**NOTE:** Some parts of your deployment may fail if the resource provider `Microsoft.AlertsManagement` is not registered in your. Follow the [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider-1) to register it and the re-run the deployment.
+**NOTE:** Some parts of your deployment may fail if the resource provider `Microsoft.AlertsManagement` is not registered in your subscription. Follow the [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider-1) to register it and the re-run the deployment.
 
 Resource deployment can take up to 10 minutes, afterwards you'll be able to find most of the resources on your resource group. 
 
