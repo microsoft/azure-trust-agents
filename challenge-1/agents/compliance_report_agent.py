@@ -388,12 +388,12 @@ You must ensure all audit reports are comprehensive, accurate, and suitable for 
                     ],
                     store=True
                 )
-                
+
                 print(f"✅ Created Compliance Audit Report Agent: {created_agent.id}")
-                
+
                 # Test the agent with a sample risk analysis output
                 print(f"\n🔍 Testing Compliance Audit Report Agent...")
-                
+
                 sample_risk_analysis = """Risk Analysis Complete for Transaction TX1001:
 
 Customer: C1001 (John Smith)
@@ -426,13 +426,12 @@ Please provide:
 Focus on translating the risk analysis into clear audit findings and actionable recommendations for management review."""
 
                 result = await agent.run(test_prompt)
-                
+
                 print(f"\n📋 COMPLIANCE AUDIT REPORT AGENT RESPONSE:")
                 print("="*60)
                 print(result.text)
-                
+
                 return agent
-            
     except Exception as e:
         print(f"❌ Error creating Compliance Report Agent: {e}")
         return None

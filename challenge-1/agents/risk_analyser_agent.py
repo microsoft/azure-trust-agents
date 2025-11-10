@@ -72,15 +72,15 @@ async def main():
                     store=True
                 )
 
-            # Test the agent with a simple query
-            print("\n🧪 Testing the agent with a sample query...")
-            try:
-                result = await agent.run("Hello, tell me about the main KYC regulations I should consider for fraud detection?")
-                print(f"✅ Agent response: {result.text}")
-            except Exception as test_error:
-                print(f"⚠️  Agent test failed (but agent was still created): {test_error}")
-            
-            return agent
+                # Test the agent with a simple query
+                print("\n🧪 Testing the agent with a sample query...")
+                try:
+                    result = await agent.run("Hello, tell me about the main KYC regulations I should consider for fraud detection?")
+                    print(f"✅ Agent response: {result.text}")
+                except Exception as test_error:
+                    print(f"⚠️  Agent test failed (but agent was still created): {test_error}")
+
+                return agent
     except Exception as e:
         print(f"❌ Error creating agent: {e}")
         print("Make sure you have run 'az login' and have proper Azure credentials configured.")
