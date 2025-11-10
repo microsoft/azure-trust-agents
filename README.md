@@ -6,7 +6,7 @@ Welcome to the Automated Compliance Agents Hackathon! 🏦 Today, you'll dive in
 
 Get ready to transform compliance with AI using the revolutionary **Microsoft Agent Framework**! In this hackathon, you'll master the latest enterprise-grade agent technology to build intelligent compliance systems that parse regulations, monitor transactions, and generate transparent audit trails—just like real compliance teams, but faster and more accurate. 
 
-Using sequential orchestration, MCP integration, and Agent-to-Agent communication, your specialized agents will collaborate seamlessly to automate complex regulatory workflows in minutes, not months. From data ingestion through risk analysis to compliance reporting and frontend visualization, you'll create a production-ready multi-agent system with comprehensive observability and a professional management interface that redefines how financial institutions stay compliant and build trust. 
+Using sequential orchestration, MCP integration, and Agent-to-Agent communication, your specialized agents will collaborate seamlessly to automate complex regulatory workflows in minutes, not months. From data ingestion through risk analysis to compliance reporting and frontend visualization, you'll create a multi-agent system with comprehensive observability and a professional management interface that redefines how financial institutions stay compliant and build trust. 
 
 ## Learning Objectives 🎯
 

@@ -28,11 +28,11 @@ The new Microsoft Agent Framework, released in October 2025, is an open-source S
 Besides the capabilities on previous Frameworks, new main features include:
 - Built-in enterprise capabilities: observability via OpenTelemetry, security and identity through Microsoft Entra integration, compliance hooks, and support for long-running, durable agents.​
 - Human-in-the-loop workflows, checkpointing, and request/response management for safe, reliable operations.​
-- Integration with a wide range of APIs, platforms (Azure AI Foundry, Microsoft 365, Copilot), and enterprise systems.​
+- Integration with a wide range of APIs, platforms (Azure AI Foundry, Microsoft 365, Copilot Studio), and enterprise systems.​
 - Support for open standards: **Model Context Protocol (MCP)**, **Agent-to-Agent (A2A) communication**, and OpenAPI integration ensure interoperability and portability.​
 - Modular architecture with pluggable connectors, agent memory, and extensible components for developers to customize.​
 
-For a more detailed integration, these are the set of core concepts that complete the full Agentic spectrum with MAF:
+For a more detailed integration, these are the set of core concepts that complete the full Agentic spectrum with the Microsoft Agent Framework:
 
 - [**Executors**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/executors?pivots=programming-language-csharp): Executors are processing units that handle specific message types, perform logic, and emit outputs or send messages to other components in a workflow.
 - [**Edges**](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/core-concepts/edges?pivots=programming-language-csharp): Edges define how messages move between executors, enabling conditional routing, branching, fan-in, and fan-out message flows.
@@ -161,7 +161,7 @@ After successfully creating the agents, each script will output a unique agent I
 
 Now comes the exciting part - executing the complete fraud detection pipeline using Microsoft's Agent Framework Sequential Builder pattern through an interactive Jupyter notebook. This step demonstrates enterprise-grade multi-agent orchestration where each agent automatically receives the output from the previous agent in the chain. The workflow will analyze a sample transaction (TX2002) through three sequential stages: data retrieval from Cosmos DB, AI-powered risk analysis, and comprehensive compliance audit reporting.
 
-Open the notebook directly in VS Code for a seamless experience in `workflow/sequential_workflow.py`
+Open the notebook directly in VS Code for a seamless experience in `workflow/sequential_workflow.ipynb`
 
 ## Notebook Walkthrough
 
