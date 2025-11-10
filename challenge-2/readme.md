@@ -182,7 +182,7 @@ The workflow we are building in Challenge 2 represents a significant evolution f
 
 The new workflow evolves from the proven 3-executor sequential pattern to an advanced 4-executor architecture (Customer Data → Risk Analyzer → Compliance Report + Fraud Alert running in parallel) and introduces a groundbreaking dual-agent architecture, following the principle of **"right tool for the right job"** - using Azure AI Foundry agents where conversational state and Azure service integration excel, and switching to the responses client where direct API performance and MCP tool integration can provide superior results.
 
-Let's go ahead and open our `sequential_workflow_chal2.py` file. Now, we are not dependent on sample data anymore, we will find a full integration for the 4 agents, making the newly made Farud Alert Executor robust and one step closer to being production-ready.
+Let's go ahead and open our `sequential_workflow_chal2.py` file. Now, we are not dependent on sample data anymore, we will find a full integration for the 4 agents, making the newly made Fraud Alert Executor robust and one step closer to being production-ready.
 
 ```python
 cd agents

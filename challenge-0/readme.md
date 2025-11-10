@@ -1,4 +1,4 @@
-# 1. Environment Creation and Resources Deployment
+# Challenge 0 - Environment Creation and Resources Deployment
 
 **Expected Duration:** 30 minutes
 
@@ -22,7 +22,9 @@ To open GitHub Codespaces, click on the button below:
 
 Please select your forked repository from the dropdown and, if necessary, adjust other settings of GitHub Codespace.
 
-**NOTE:** If GitHub Codespaces is not enabled in your organization, you can enable it by following the instructions [here](https://docs.github.com/en/codespaces/managing-codespaces-for-your-organization/enabling-or-disabling-github-codespaces-for-your-organization), or, if you cannot change your GitHub organization's settings, create a free personal GitHub account [here](https://github.com/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F&source=header-home). The Github Free Plan includes 120 core hours per month, equivalent to 60 hours on a 2-core machine, along with 15 GB of storage.
+
+> [!NOTE]
+> If GitHub Codespaces is not enabled in your organization, you can enable it by following the instructions [here](https://docs.github.com/en/codespaces/managing-codespaces-for-your-organization/enabling-or-disabling-github-codespaces-for-your-organization), or, if you cannot change your GitHub organization's settings, create a free personal GitHub account [here](https://github.com/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F&source=header-home). The Github Free Plan includes 120 core hours per month, equivalent to 60 hours on a 2-core machine, along with 15 GB of storage.
 
 
 ## 1.3 Resource Deployment Guide
@@ -44,13 +46,13 @@ Now, time to deploy our resources to Azure!
 - servicePrincipalObjectId: Leave this field empty.
 - resource group: Introduce the unique name for your resource group (example: rg-user01-yourinitials).
 
-**NOTE:** Some parts of your deployment may fail if the resource provider `Microsoft.AlertsManagement` is not registered in your. Follow the [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider-1) to register it and the re-run the deployment.
+**NOTE:** Some parts of your deployment may fail if the resource provider `Microsoft.AlertsManagement` is not registered in your subscription. Follow the [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider-1) to register it and the re-run the deployment.
 
-Resource deployment can take up to 10 minutes, afterwards you'll be able to find most of the resources on your resource group. 
+Resource deployment can take up to 10 minutes, afterwards you'll be able to find all the Azure resources you need in your resource group.
 
 ## 1.4 Verify the creation of your resources
 
-Go back to your `Azure Portal` and find your `Resource Group`that should by now contain WIP resources and look like this:
+Go back to your `Azure Portal` and find your `Resource Group`that should by now contain some resources and look like this:
 
 ![alt text](image.png)
 
@@ -90,7 +92,6 @@ We are going to work with a lot of sources of data, however, the goal of this ha
 
 **AI Search indexes:**
 - **Regulations & Policies:** Stores raw, unstructured text of regulations and policies, making them searchable for agents.
-- **Case Explanations:** Contains past audit notes and precedent cases to help agents explain or justify decisions.
 
 These data stores are pre-structured to help you focus on building and orchestrating your agents, rather than spending time on data preparation. You will interact with these containers and indexes throughout the hackathon.
 
@@ -99,6 +100,6 @@ These data stores are pre-structured to help you focus on building and orchestra
 ```
 
 ## Conclusion
-By reaching this section you should have every resource and installed the requirements necessary to conduct the hackathon. In the next challenges, you will use these services to start strongly your Azure AI Agents journey.
+By reaching this section you should have every resource and installed the requirements necessary to conduct the hackathon. In the next challenges, you will use these resources to start strongly your Azure AI Agents journey.
 
 Now the real fun begins!
