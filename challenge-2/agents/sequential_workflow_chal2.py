@@ -477,6 +477,7 @@ Provide a structured risk assessment with clear regulatory justification.
 
     except Exception as e:
         error_result = RiskAnalysisResponse(
+            customer_data=customer_response.customer_data if customer_response else "No customer data available",
             risk_analysis=f"Error in risk analysis: {str(e)}",
             risk_score="Unknown",
             transaction_id=customer_response.transaction_id if customer_response else "Unknown",
