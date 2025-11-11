@@ -4,9 +4,10 @@ import importlib.util
 from pathlib import Path
 from typing import Annotated
 from azure.identity.aio import AzureCliCredential
-from agent_framework import ChatAgent, HostedFileSearchTool
+from agent_framework import ChatAgent
 from agent_framework.azure import AzureAIAgentClient
 from azure.ai.projects.aio import AIProjectClient
+from azure.ai.projects.models import ConnectionType
 from pydantic import Field
 from dotenv import load_dotenv
 
@@ -18,21 +19,23 @@ model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME")
 sc_connection_id = os.environ.get("AZURE_AI_CONNECTION_ID")
 
 async def main():
-    azure_ai_search_tool = HostedFileSearchTool(
-        additional_properties={
-            "index_name": "regulations-policies",
-            "query_type": "simple",
-            "top_k": 5,
-        },
-    )
-    
     try:
         async with AzureCliCredential() as credential:
             async with AIProjectClient(
                 endpoint=project_endpoint,
                 credential=credential
             ) as project_client:
-                
+
+                # Get Azure AI Search connection ID
+                ai_search_conn_id = ""
+                async for connection in project_client.connections.list():
+                    if connection.type == ConnectionType.AZURE_AI_SEARCH:
+                        ai_search_conn_id = connection.id
+                        break
+
+                if not ai_search_conn_id:
+                    raise ValueError("Azure AI Search connection not found in project")
+
                 # Create persistent agent
                 created_agent = await project_client.agents.create_agent(
                     model=model_deployment_name,
@@ -55,11 +58,21 @@ async def main():
                 }
 
                     Use the Azure AI Search to look up relevant regulations, compliance rules, and fraud detection patterns that apply to the transaction.
-                    
+
                     Output should be:
                     - risk_score: integer (0-100)
                     - risk_level: [Low, Medium, High]
-                    - reason: a brief explainable summary with references to relevant regulations or policies found via search"""
+                    - reason: a brief explainable summary with references to relevant regulations or policies found via search""",
+                    tools=[{"type": "azure_ai_search"}],
+                    tool_resources={
+                        "azure_ai_search": {
+                            "indexes": [{
+                                "index_connection_id": ai_search_conn_id,
+                                "index_name": "regulations-policies",
+                                "query_type": "simple"
+                            }]
+                        }
+                    }
                 )
                 
                 # Wrap agent with tools for usage
@@ -68,7 +81,6 @@ async def main():
                         project_client=project_client,
                         agent_id=created_agent.id
                     ),
-                    tools=[azure_ai_search_tool],
                     store=True
                 )
 
