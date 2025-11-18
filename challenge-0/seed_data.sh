@@ -214,7 +214,7 @@ EOF
 
 # Run the Python script
 echo "🐍 Running data seeding script..."
-python3 seed_data.py
+python seed_data.py
 
 # Clean up
 rm seed_data.py
