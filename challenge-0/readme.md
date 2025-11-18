@@ -40,7 +40,7 @@ az login --use-device-code
 
 Now, time to deploy our resources to Azure!
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Fazure-trust-agents%2Fmain%2Fchallenge-0%2Finfra%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Fazure-trust-agents%2Frefs%2Fheads%2Fmain%2Fchallenge-0%2Finfra%2Fazuredeploy.json)
 
 **Deployment Parameters:**
 - servicePrincipalObjectId: Leave this field empty.
