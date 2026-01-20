@@ -8,7 +8,7 @@ annotated-types==0.7.0
 anyio==4.9.0
 asttokens==3.0.0
 attrs==25.3.0
-av==14.4.0
+av>=14.0.0
 azure-ai-agents==1.2.0b5
 azure-ai-formrecognizer==3.3.3
 azure-ai-inference==1.0.0b9
