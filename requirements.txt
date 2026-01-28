@@ -103,7 +103,7 @@ PyMeta3==0.5.1
 pyOpenSSL==25.1.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
-python-multipart==0.0.20
+python-multipart==0.0.22
 pytz==2025.2
 PyYAML==6.0.2
 pyzmq==27.0.0
