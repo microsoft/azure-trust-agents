@@ -15,7 +15,7 @@ azure-ai-inference==1.0.0b9
 azure-cosmos
 azure-ai-projects==1.0.0b12
 azure-common==1.1.28
-azure-core==1.35.0
+azure-core==1.38.0
 azure-identity==1.23.1
 azure-search==1.0.0b2
 azure-search-documents==11.5.3
