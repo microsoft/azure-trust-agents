@@ -11,9 +11,9 @@
   "parameters": {
     "location": {
       "type": "string",
-      "defaultValue": "swedencentral",
+      "defaultValue": "westus",
       "allowedValues": [
-        "swedencentral"
+        "westus"
       ],
       "metadata": {
         "description": "Azure location where resources should be deployed (e.g., swedencentral)"
