@@ -97,7 +97,7 @@ pydantic-settings==2.10.1
 pydantic_core==2.33.2
 pyee==13.0.0
 Pygments==2.19.2
-PyJWT==2.10.1
+PyJWT==2.12.0
 pylibsrtp==0.12.0
 PyMeta3==0.5.1
 pyOpenSSL==25.1.0
