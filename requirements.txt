@@ -100,7 +100,7 @@ Pygments==2.19.2
 PyJWT==2.10.1
 pylibsrtp==0.12.0
 PyMeta3==0.5.1
-pyOpenSSL==25.1.0
+pyOpenSSL==26.0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 python-multipart==0.0.20
