@@ -1,6 +1,6 @@
 aiohappyeyeballs==2.6.1
 asyncio
-aiohttp==3.12.14
+aiohttp==3.13.4
 aioice==0.10.1
 aiortc==1.13.0
 av==14.2.0
