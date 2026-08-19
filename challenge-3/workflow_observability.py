@@ -1212,7 +1212,7 @@ async def run_fraud_detection_workflow():
         fraud_alert_output = None
         events_processed = 0
         
-        async for event in workflow.run_stream(request):
+        async for event in workflow.run(request, stream=True):
             events_processed += 1
             
             # Log each workflow event

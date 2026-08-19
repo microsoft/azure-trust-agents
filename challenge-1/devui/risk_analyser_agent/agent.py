@@ -68,12 +68,14 @@ async def _create_agent():
     - risk_score: integer (0-100)
     - risk_level: [Low, Medium, High]
     - reason: a brief explainable summary with references to relevant regulations or policies found via search""",
+        # as_dict() is required: the SDK tool model is only shallow-copied downstream,
+        # leaving nested models that are not JSON serializable.
         tools=[
             chat_client.get_azure_ai_search_tool(
                 index_connection_id=ai_search_conn_id,
                 index_name="regulations-policies",
                 query_type="simple",
-            )
+            ).as_dict()
         ],
     )
 

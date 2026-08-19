@@ -823,7 +823,7 @@ async def run_fraud_detection_workflow():
 
     print("🔄 Executing 4-Executor Fraud Detection Workflow with Parallel Processing...")
 
-    async for event in workflow.run_stream(request):
+    async for event in workflow.run(request, stream=True):
         # Capture outputs from both parallel executors
         if event.type == "output":
             if isinstance(event.data, ComplianceAuditResponse):

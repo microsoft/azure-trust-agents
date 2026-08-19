@@ -138,12 +138,12 @@ mcp_tool = < PLACEHOLDER FOR MCP TOOL >
 Replace it by:
 
 ```python
-mcp_tool = McpTool(
-    server_label="fraudalertmcp", 
-    server_url=mcp_endpoint,
-)
-mcp_tool.update_headers("Ocp-Apim-Subscription-Key",
-                        mcp_subscription_key)
+        mcp_tool = chat_client.get_mcp_tool(
+            name="fraudalertmcp",
+            url=mcp_endpoint,
+            headers={"Ocp-Apim-Subscription-Key": mcp_subscription_key},
+            approval_mode="never_require",
+        )
 ```
 
 About this configuration: 

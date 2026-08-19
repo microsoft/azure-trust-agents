@@ -583,7 +583,7 @@ async def run_fraud_detection_workflow():
     # Execute workflow with streaming
     final_output = None
     
-    async for event in workflow.run_stream(request):
+    async for event in workflow.run(request, stream=True):
         # Capture final workflow output
         if event.type == "output":
             final_output = event.data

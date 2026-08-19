@@ -207,7 +207,7 @@ Define type-safe Pydantic models for workflow data contracts:
 ### **Section 9-10: Workflow Orchestration** ⚙️
 **Complete workflow construction**:
 - **Sequential Builder**: Uses `WorkflowBuilder` to connect three executors with proper edge definitions
-- **Stream Execution**: `workflow.run_stream()` provides real-time event monitoring
+- **Stream Execution**: `workflow.run(request, stream=True)` provides real-time event monitoring
 - **Result Processing**: Captures the `event.type == "output"` workflow event for final compliance audit results
 - **Comprehensive Display**: Shows audit report ID, compliance ratings, risk factors, and required actions
 
