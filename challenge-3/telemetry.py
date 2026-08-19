@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 # Import observability components from Agent Framework
 from agent_framework.observability import (
-    setup_observability,
+    configure_otel_providers,
     get_tracer,
     get_meter,
     OtelAttr,
@@ -26,10 +26,6 @@ from agent_framework.observability import (
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import format_trace_id
 from opentelemetry import trace, metrics
-
-# Import Application Insights for custom events
-from applicationinsights import TelemetryClient
-from applicationinsights.channel import TelemetryChannel
 import logging
 
 # Load environment variables
@@ -41,7 +37,7 @@ class TelemetryManager:
     def __init__(self):
         self.tracer = None
         self.meter = None
-        self.telemetry_client = None
+        self.app_insights_enabled = False
         self._initialized = False
         
         # Metrics
@@ -61,22 +57,34 @@ class TelemetryManager:
         vs_code_extension_port = os.environ.get("VS_CODE_EXTENSION_PORT")
         
         # Setup observability with multiple exporters for comprehensive monitoring
-        setup_observability(
+        exporters = []
+        if app_insights_connection_string:
+            from azure.monitor.opentelemetry.exporter import (
+                AzureMonitorLogExporter,
+                AzureMonitorMetricExporter,
+                AzureMonitorTraceExporter,
+            )
+
+            exporters.extend([
+                AzureMonitorTraceExporter(connection_string=app_insights_connection_string),
+                AzureMonitorMetricExporter(connection_string=app_insights_connection_string),
+                AzureMonitorLogExporter(connection_string=app_insights_connection_string),
+            ])
+            self.app_insights_enabled = True
+
+        # configure_otel_providers reads OTEL_EXPORTER_OTLP_ENDPOINT for OTLP export
+        if otlp_endpoint:
+            os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", otlp_endpoint)
+
+        configure_otel_providers(
             enable_sensitive_data=True,  # Enable for detailed financial transaction traces
-            applicationinsights_connection_string=app_insights_connection_string,
-            otlp_endpoint=otlp_endpoint,
+            exporters=exporters or None,
             vs_code_extension_port=int(vs_code_extension_port) if vs_code_extension_port else None
         )
         
         # Initialize tracer and meter
         self.tracer = get_tracer("fraud_detection_workflow", "1.0.0")
         self.meter = get_meter("fraud_detection_metrics", "1.0.0")
-        
-        # Initialize Application Insights client
-        if app_insights_connection_string:
-            self.telemetry_client = TelemetryClient(app_insights_connection_string)
-            self.telemetry_client.context.application.ver = "1.0.0"
-            self.telemetry_client.context.device.id = "fraud_detection_workflow"
         
         # Initialize custom metrics
         self._initialize_metrics()
@@ -111,9 +119,10 @@ class TelemetryManager:
     
     def flush_telemetry(self):
         """Flush telemetry to ensure events are sent immediately."""
-        if self.telemetry_client:
-            self.telemetry_client.flush()
-            print("📊 Telemetry flushed to Application Insights")
+        provider = trace.get_tracer_provider()
+        if hasattr(provider, "force_flush"):
+            provider.force_flush()
+            print("📊 Telemetry flushed to configured exporters")
     
     def send_business_event(self, event_name: str, properties: Dict[str, Any]):
         """Send business event using multiple OpenTelemetry approaches for comprehensive tracing."""
@@ -145,14 +154,6 @@ class TelemetryManager:
             process_span.set_attribute("process.type", "business_event_processing")
             process_span.add_event(f"Business event processed: {event_name}")
             
-        # Method 4: Traditional Application Insights (legacy support)
-        if self.telemetry_client:
-            try:
-                self.telemetry_client.track_event(event_name, properties)
-                self.telemetry_client.flush()  # Immediate flush
-            except Exception as e:
-                print(f"⚠️ Application Insights custom event failed: {e}")
-        
         print(f"📊 Business event sent: {event_name} (multiple channels)")
     
     def record_transaction_processed(self, step: str, transaction_id: str):
@@ -183,18 +184,16 @@ class TelemetryManager:
     
     def record_fraud_alert_created(self, alert_id: str, severity: str, decision_action: str, transaction_id: str):
         """Record fraud alert creation."""
-        if self.telemetry_client:
-            # Send custom event for fraud alert
-            self.telemetry_client.track_event(
-                "FraudAlertCreated",
-                {
-                    "alert_id": alert_id,
-                    "severity": severity,
-                    "decision_action": decision_action,
-                    "transaction_id": transaction_id,
-                    "timestamp": datetime.now().isoformat()
-                }
-            )
+        self.send_business_event(
+            "FraudAlertCreated",
+            {
+                "alert_id": alert_id,
+                "severity": severity,
+                "decision_action": decision_action,
+                "transaction_id": transaction_id,
+                "timestamp": datetime.now().isoformat()
+            }
+        )
     
     def create_cosmos_span(self, operation: str, collection: str, **attributes):
         """Create a span for Cosmos DB operations."""

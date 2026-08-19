@@ -40,8 +40,8 @@ import re
 from datetime import datetime, timedelta
 from collections import Counter
 from typing_extensions import Never
-from agent_framework import WorkflowBuilder, WorkflowContext, WorkflowOutputEvent, executor, ChatAgent, HostedMCPTool
-from agent_framework.azure import AzureAIAgentClient, AzureOpenAIResponsesClient
+from agent_framework import WorkflowBuilder, WorkflowContext, executor, Agent
+from agent_framework.foundry import FoundryChatClient
 from azure.identity.aio import AzureCliCredential
 from azure.identity import AzureCliCredential as SyncAzureCliCredential
 from azure.cosmos import CosmosClient
@@ -127,9 +127,10 @@ class FraudAlertResponse(BaseModel):
 def get_transaction_data(transaction_id: str) -> dict:
     """Get transaction data from Cosmos DB."""
     try:
-        query = f"SELECT * FROM c WHERE c.transaction_id = '{transaction_id}'"
+        query = "SELECT * FROM c WHERE c.transaction_id = @transaction_id"
         items = list(transactions_container.query_items(
             query=query,
+            parameters=[{"name": "@transaction_id", "value": transaction_id}],
             enable_cross_partition_query=True
         ))
         
@@ -142,9 +143,10 @@ def get_transaction_data(transaction_id: str) -> dict:
 def get_customer_data(customer_id: str) -> dict:
     """Get customer data from Cosmos DB."""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
+        query = "SELECT * FROM c WHERE c.customer_id = @customer_id"
         items = list(customers_container.query_items(
             query=query,
+            parameters=[{"name": "@customer_id", "value": customer_id}],
             enable_cross_partition_query=True
         ))
         
@@ -157,9 +159,10 @@ def get_customer_data(customer_id: str) -> dict:
 def get_customer_transactions(customer_id: str) -> list:
     """Get all transactions for a customer from Cosmos DB."""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
+        query = "SELECT * FROM c WHERE c.customer_id = @customer_id"
         items = list(transactions_container.query_items(
             query=query,
+            parameters=[{"name": "@customer_id", "value": customer_id}],
             enable_cross_partition_query=True
         ))
         
@@ -167,6 +170,33 @@ def get_customer_transactions(customer_id: str) -> list:
         
     except Exception as e:
         return [{"error": str(e)}]
+
+
+RISK_ANALYSER_INSTRUCTIONS = """You are a Risk Analyser Agent evaluating financial transactions for potential fraud.
+Apply fraud detection logic using rule-based checks and regulatory compliance data, assign a fraud risk
+score from 0 to 100, and explain the reasoning behind the score.
+
+Consider these risk factors:
+{"high_risk_countries": ["NG", "IR", "RU", "KP"], "high_amount_threshold_usd": 10000,
+ "suspicious_account_age_days": 30, "low_device_trust_threshold": 0.5}"""
+
+COMPLIANCE_REPORT_INSTRUCTIONS = """You are a Compliance Audit Report Agent that generates formal audit
+reports from the Risk Analyser Agent's findings. Produce compliance ratings, required actions, executive
+summaries and audit trails suitable for internal audit review."""
+
+FRAUD_ALERT_INSTRUCTIONS = """You are a Fraud Alert Management Agent that creates and manages fraud alerts
+for financial transactions.
+
+When creating fraud alerts, use these enumerations:
+- severity (LOW, MEDIUM, HIGH, CRITICAL)
+- status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)
+- decision action (ALLOW, BLOCK, MONITOR, INVESTIGATE)
+
+Create fraud alerts for transactions with high risk scores (>= 75), sanctions concerns, high-risk
+jurisdictions, suspicious patterns, or regulatory compliance violations.
+
+Always document risk factors and reasoning. Send alerts using the MCP tool without asking for confirmation."""
+
 
 # Compliance Report Functions
 def parse_risk_analysis_result(risk_analysis_text: str) -> dict:
@@ -597,44 +627,41 @@ async def risk_analyzer_executor(
             
             # Configuration
             project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
-            model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
-            RISK_ANALYSER_AGENT_ID = os.getenv("RISK_ANALYSER_AGENT_ID")
+            model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME")
             
             span.set_attributes({
-                "ai.model": model_deployment_name,
-                "agent.id": RISK_ANALYSER_AGENT_ID or "not_configured"
+                "ai.model": model_deployment_name or "not_configured",
+                "agent.name": "RiskAnalyserAgent"
             })
             
-            if not RISK_ANALYSER_AGENT_ID:
-                raise ValueError("RISK_ANALYSER_AGENT_ID required")
+            if not model_deployment_name:
+                raise ValueError("MODEL_DEPLOYMENT_NAME required")
             
             span.add_event("Starting AI risk analysis", {
                 "model": model_deployment_name,
-                "agent_id": RISK_ANALYSER_AGENT_ID
+                "agent_name": "RiskAnalyserAgent"
             })
             
             # Create sub-span for AI client initialization
             with telemetry.tracer.start_as_current_span("executor.process.ai_client_setup") as client_span:
                 client_span.set_attributes({
                     "ai.service": "azure_ai_foundry",
-                    "ai.agent_id": RISK_ANALYSER_AGENT_ID or "unknown"
+                    "ai.agent_name": "RiskAnalyserAgent"
                 })
                 
                 async with AzureCliCredential() as credential:
-                    risk_client = AzureAIAgentClient(
+                    chat_client = FoundryChatClient(
                         project_endpoint=project_endpoint,
-                        model_deployment_name=model_deployment_name,
-                        async_credential=credential,
-                        agent_id=RISK_ANALYSER_AGENT_ID
+                        model=model_deployment_name,
+                        credential=credential,
                     )
                     
                     client_span.add_event("AI client initialized successfully")
                 
-                async with risk_client as client:
-                    risk_agent = ChatAgent(
-                        chat_client=client,
-                        model_id=model_deployment_name,
-                        store=True
+                    risk_agent = Agent(
+                        chat_client,
+                        name="RiskAnalyserAgent",
+                        instructions=RISK_ANALYSER_INSTRUCTIONS,
                     )
                     
                     # Create risk assessment prompt
@@ -657,9 +684,9 @@ Provide a structured risk assessment with clear regulatory justification.
 """
                     
                     # Run AI analysis with timing
-                    start_time = asyncio.get_event_loop().time()
+                    start_time = asyncio.get_running_loop().time()
                     result = await risk_agent.run(risk_prompt)
-                    end_time = asyncio.get_event_loop().time()
+                    end_time = asyncio.get_running_loop().time()
                     
                     # Record AI processing time
                     processing_time = end_time - start_time
@@ -801,33 +828,31 @@ async def compliance_report_executor(
             
             # Configuration
             project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
-            model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
-            COMPLIANCE_REPORT_AGENT_ID = os.getenv("COMPLIANCE_REPORT_AGENT_ID")
+            model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME")
             
             span.set_attributes({
-                "ai.model": model_deployment_name,
-                "agent.id": COMPLIANCE_REPORT_AGENT_ID or "not_configured"
+                "ai.model": model_deployment_name or "not_configured",
+                "agent.name": "ComplianceReportAgent"
             })
             
-            if not COMPLIANCE_REPORT_AGENT_ID:
-                raise ValueError("COMPLIANCE_REPORT_AGENT_ID required")
+            if not model_deployment_name:
+                raise ValueError("MODEL_DEPLOYMENT_NAME required")
             
             span.add_event("Starting AI Foundry compliance report generation")
             
-            # Use AI Foundry Agent Client like Challenge 2
+            # Use the Foundry chat client like Challenge 2
             async with AzureCliCredential() as credential:
-                compliance_client = AzureAIAgentClient(
+                chat_client = FoundryChatClient(
                     project_endpoint=project_endpoint,
-                    model_deployment_name=model_deployment_name,
-                    async_credential=credential,
-                    agent_id=COMPLIANCE_REPORT_AGENT_ID
+                    model=model_deployment_name,
+                    credential=credential,
                 )
                 
-                async with compliance_client as client:
-                    compliance_agent = ChatAgent(
-                        chat_client=client,
-                        model_id=model_deployment_name,
-                        store=True
+                with telemetry.tracer.start_as_current_span("executor.process.compliance_agent"):
+                    compliance_agent = Agent(
+                        chat_client,
+                        name="ComplianceReportAgent",
+                        instructions=COMPLIANCE_REPORT_INSTRUCTIONS,
                     )
                     
                     # Create comprehensive compliance report prompt focused on audit reporting only
@@ -853,9 +878,9 @@ Please provide a structured audit report including:
 Focus on regulatory compliance, audit documentation, and actionable compliance recommendations. 
 Provide a comprehensive compliance assessment that management can use for regulatory reporting and internal compliance processes."""
                     
-                    start_time = asyncio.get_event_loop().time()
+                    start_time = asyncio.get_running_loop().time()
                     result = await compliance_agent.run(compliance_prompt)
-                    end_time = asyncio.get_event_loop().time()
+                    end_time = asyncio.get_running_loop().time()
                     
                     processing_time = end_time - start_time
                     span.set_attribute("ai.compliance_processing_time", processing_time)
@@ -995,69 +1020,31 @@ async def fraud_alert_executor(
             if missing_params:
                 raise ValueError(f"Missing required parameters for fraud alert executor: {', '.join(missing_params)}")
             
-            from azure.ai.projects import AIProjectClient
-            from azure.identity import DefaultAzureCredential
-            from azure.ai.agents.models import (
-                ListSortOrder,
-                McpTool,
-                RequiredMcpToolCall,
-                RunStepActivityDetails,
-                SubmitToolApprovalAction,
-                ToolApproval,
-            )
-            import time
-            
             span.add_event("Starting MCP-enabled fraud alert processing")
             
-            project_client = AIProjectClient(
-                endpoint=project_endpoint,
-                credential=DefaultAzureCredential(),
-            )
-            
-            # Initialize agent MCP tool
-            mcp_tool = McpTool(
-                server_label="fraudalertmcp",
-                server_url=mcp_endpoint,
-            )
-            mcp_tool.update_headers("Ocp-Apim-Subscription-Key", mcp_subscription_key)
-            
-            with project_client:
-                agents_client = project_client.agents
-
-                # Create fraud alert agent with MCP tool
-                agent = agents_client.create_agent(
+            async with AzureCliCredential() as credential:
+                chat_client = FoundryChatClient(
+                    project_endpoint=project_endpoint,
                     model=model_deployment_name,
-                    name="fraud-alert-agent",
-                    instructions="""
-You are a Fraud Alert Management Agent that specializes in creating and managing fraud alerts for financial transactions.
-
-Your responsibilities include:
-- Analyzing risk assessment results to determine if fraud alerts are needed
-- Creating appropriate fraud alerts using the MCP tool with correct severity and status
-- Determining proper decision actions (ALLOW, BLOCK, MONITOR, INVESTIGATE)
-- Providing clear reasoning for alert decisions
-
-When creating fraud alerts, use these enumerations:
-- severity (LOW, MEDIUM, HIGH, CRITICAL)
-- status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)
-- decision action (ALLOW, BLOCK, MONITOR, INVESTIGATE)
-
-Create fraud alerts for transactions that meet any of these criteria:
-1. High risk scores (>= 75)
-2. Sanctions-related concerns
-3. High-risk jurisdictions
-4. Suspicious patterns or anomalies
-5. Regulatory compliance violations
-
-Always create comprehensive alerts with proper risk factor documentation and clear reasoning.
-Send alerts using the MCP tool without asking for further confirmation.
-""",
-                    tools=mcp_tool.definitions,
+                    credential=credential,
                 )
 
-                # Create thread for communication
-                thread = agents_client.threads.create()
-                
+                # Initialize agent MCP tool
+                mcp_tool = chat_client.get_mcp_tool(
+                    name="fraudalertmcp",
+                    url=mcp_endpoint,
+                    headers={"Ocp-Apim-Subscription-Key": mcp_subscription_key},
+                    approval_mode="never_require",
+                )
+
+                # Create fraud alert agent with MCP tool
+                fraud_alert_agent = Agent(
+                    chat_client,
+                    name="fraud-alert-agent",
+                    instructions=FRAUD_ALERT_INSTRUCTIONS,
+                    tools=[mcp_tool],
+                )
+
                 # Create comprehensive message based on risk analysis
                 risk_summary = f"""
 RISK ANALYSIS SUMMARY FOR TRANSACTION {risk_response.transaction_id}
@@ -1074,62 +1061,14 @@ Please analyze this risk assessment and create an appropriate fraud alert using 
 Include all relevant transaction details, risk factors, and provide clear reasoning for the alert decision.
 """
                 
-                message = agents_client.messages.create(
-                    thread_id=thread.id,
-                    role="user",
-                    content=f"Please analyze this risk assessment and create a fraud alert if needed: {risk_summary}",
+                start_time = asyncio.get_running_loop().time()
+                run_result = await fraud_alert_agent.run(
+                    f"Please analyze this risk assessment and create a fraud alert if needed: {risk_summary}"
                 )
-                
-                # Execute agent run with tool approvals
-                run = agents_client.runs.create(
-                    thread_id=thread.id, 
-                    agent_id=agent.id, 
-                    tool_resources=mcp_tool.resources
-                )
-
-                # Process run with automatic tool approvals
-                start_time = asyncio.get_event_loop().time()
-                while run.status in ["queued", "in_progress", "requires_action"]:
-                    time.sleep(1)
-                    run = agents_client.runs.get(thread_id=thread.id, run_id=run.id)
-
-                    if run.status == "requires_action" and isinstance(run.required_action, SubmitToolApprovalAction):
-                        tool_calls = run.required_action.submit_tool_approval.tool_calls
-                        if not tool_calls:
-                            agents_client.runs.cancel(thread_id=thread.id, run_id=run.id)
-                            break
-
-                        tool_approvals = []
-                        for tool_call in tool_calls:
-                            if isinstance(tool_call, RequiredMcpToolCall):
-                                try:
-                                    tool_approvals.append(
-                                        ToolApproval(
-                                            tool_call_id=tool_call.id,
-                                            approve=True,
-                                            headers=mcp_tool.headers,
-                                        )
-                                    )
-                                except Exception as e:
-                                    span.add_event("Error approving tool call", {"error": str(e)})
-
-                        if tool_approvals:
-                            agents_client.runs.submit_tool_outputs(
-                                thread_id=thread.id, run_id=run.id, tool_approvals=tool_approvals
-                            )
-
-                end_time = asyncio.get_event_loop().time()
+                end_time = asyncio.get_running_loop().time()
                 processing_time = end_time - start_time
                 
-                # Collect agent response
-                messages = agents_client.messages.list(
-                    thread_id=thread.id, order=ListSortOrder.ASCENDING)
-                
-                agent_response = ""
-                for msg in messages:
-                    if msg.role == "assistant" and msg.text_messages:
-                        agent_response = msg.text_messages[-1].text.value
-                        break
+                agent_response = run_result.text if run_result else ""
                 
                 # Parse agent response to extract alert information
                 alert_created = False
@@ -1210,7 +1149,7 @@ Include all relevant transaction details, risk factors, and provide clear reason
                 })
                 
                 # Clean up agent (optional - comment out to reuse)
-                # agents_client.delete_agent(agent.id)
+                # Clean up handled by the framework
                 
                 await ctx.yield_output(final_result)
             
@@ -1246,8 +1185,7 @@ async def run_fraud_detection_workflow():
         
         # Build workflow with four executors - parallel execution for compliance and fraud alert
         workflow = (
-            WorkflowBuilder()
-            .set_start_executor(customer_data_executor)
+            WorkflowBuilder(start_executor=customer_data_executor)
             .add_edge(customer_data_executor, risk_analyzer_executor)
             .add_edge(risk_analyzer_executor, compliance_report_executor)  # Parallel path 1
             .add_edge(risk_analyzer_executor, fraud_alert_executor)       # Parallel path 2
@@ -1284,7 +1222,7 @@ async def run_fraud_detection_workflow():
             })
             
             # Capture outputs from both parallel executors
-            if isinstance(event, WorkflowOutputEvent):
+            if event.type == "output":
                 if isinstance(event.data, ComplianceAuditResponse):
                     compliance_output = event.data
                     workflow_span.add_event("Compliance report completed", {

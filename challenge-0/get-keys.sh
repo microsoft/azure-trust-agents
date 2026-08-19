@@ -392,8 +392,8 @@ else
 fi
 echo "AZURE_OPENAI_ENDPOINT=\"$azureOpenAIEndpoint\"" >> ../.env
 echo "AZURE_OPENAI_KEY=\"$aiFoundryKey\"" >> ../.env
-echo "AZURE_OPENAI_DEPLOYMENT_NAME=\"gpt-4.1-mini\"" >> ../.env
-echo "MODEL_DEPLOYMENT_NAME=\"gpt-4.1-mini\"" >> ../.env
+echo "AZURE_OPENAI_DEPLOYMENT_NAME=\"gpt-5.4-mini\"" >> ../.env
+echo "MODEL_DEPLOYMENT_NAME=\"gpt-5.4-mini\"" >> ../.env
 
 echo "Keys and properties are stored in '.env' file successfully."
 

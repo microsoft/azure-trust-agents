@@ -3,9 +3,9 @@ import os
 import json
 from datetime import datetime, timedelta
 from typing import Annotated, List, Dict, Any, Optional
+from agent_framework import Agent
+from agent_framework.foundry import FoundryChatClient
 from azure.identity.aio import AzureCliCredential
-from agent_framework.azure import AzureAIAgentClient
-from agent_framework import ChatAgent
 from dotenv import load_dotenv
 from pydantic import Field
 import logging
@@ -311,7 +311,12 @@ def generate_executive_audit_summary(
         return {"error": f"Failed to generate executive summary: {str(e)}"}
 
 # Create the agent instance following Agent Framework DevUI conventions
-agent = ChatAgent(
+agent = Agent(
+    FoundryChatClient(
+        project_endpoint=project_endpoint,
+        model=model_deployment_name,
+        credential=AzureCliCredential(),
+    ),
     name="ComplianceReportAgent",
     description="Compliance audit report agent specialized in generating formal audit reports based on risk analysis findings",
     instructions="""You are a Compliance Audit Report Agent specialized in generating formal audit reports based on risk analysis findings from the Risk Analyser Agent.
@@ -358,11 +363,6 @@ Your primary responsibilities include:
 - Focus on translating risk findings into actionable audit conclusions
 
 You must ensure all audit reports are comprehensive, accurate, and suitable for internal audit review. Regulatory compliance details are handled by the Risk Analyser Agent.""",
-    chat_client=AzureAIAgentClient(
-        project_endpoint=project_endpoint,
-        model_deployment_name=model_deployment_name,
-        async_credential=AzureCliCredential()
-    ),
     tools=[
         parse_risk_analysis_result,
         generate_audit_report_from_risk_analysis,
