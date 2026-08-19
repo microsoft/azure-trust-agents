@@ -206,12 +206,13 @@ class TelemetryManager:
             }
         )
     
-    def create_processing_span(self, executor_id: str, executor_type: str, message_type: str):
+    def create_processing_span(self, executor_id: str, executor_type: str, message_type: str, payload_type: Optional[str] = None):
         """Create a processing span for executors."""
         return create_processing_span(
             executor_id=executor_id,
             executor_type=executor_type,
-            message_type=message_type
+            message_type=message_type,
+            payload_type=payload_type or message_type,
         )
     
     def create_workflow_span(self, workflow_name: str, **attributes):

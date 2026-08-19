@@ -129,10 +129,10 @@ Now, it is time to configure a simple Agent that uses the MCP server.
 
 The agent has been implemented for you in the `challenge-2/agents/fraud_alert_foundry_agent.py` file.
 
-We have left a placeholder in the code so you can add the MCP server as a tool. In line 29, find:
+We have left a placeholder in the code so you can add the MCP server as a tool. In line 73, find:
 
 ```python
-mcp_tool = < PLACEHOLDER FOR MCP TOOL >
+#TODO (Challenge 2)
 ```
 
 Replace it by:
@@ -145,10 +145,6 @@ Replace it by:
             approval_mode="never_require",
         )
 ```
-
-About this configuration: 
-- The kind of tool is [McpTool](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/how-to/tools/model-context-protocol-samples?pivots=python#create-an-agent-with-the-mcp-tool)
-- The subscription key header is required to authenticate against the API Management instance. Good stuff if you want to control access to your MCP server!
 
 ### Run the Agent
 

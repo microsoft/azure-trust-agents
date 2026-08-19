@@ -17,7 +17,7 @@ mcp_endpoint = os.environ.get("MCP_SERVER_ENDPOINT")
 mcp_subscription_key = os.environ.get("APIM_SUBSCRIPTION_KEY")
 
 # Resolve the transaction summary next to this script rather than the caller's cwd
-TX_SUMMARY_PATH = Path(__file__).resolve().parent.parent / "risk-analyzer-tx-summary.md"
+TX_SUMMARY_PATH = Path(__file__).resolve().parent / "risk-analyzer-tx-summary.md"
 
 INSTRUCTIONS = """
 You are a Fraud Alert Management Agent that specializes in creating and managing fraud alerts for financial transactions.
