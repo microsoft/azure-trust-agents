@@ -141,21 +141,23 @@ This fraud detection pipeline demonstrates a sophisticated hybrid approach combi
 
 This **hybrid architecture** ensures both regulatory compliance through transparent rule-based decisions and sophisticated fraud detection through AI-powered pattern recognition, creating an enterprise-grade solution that balances auditability with advanced threat detection capabilities.
 
-## Step 2: Add Agent IDs to Environment
+## Step 2: Verify Your Model Deployment
 
-After successfully creating the agents, each script will output a unique agent ID that Azure AI Foundry uses to identify and connect to your agents. These IDs are essential for the Sequential Builder pattern to work properly, as they allow the orchestration system to bind to your existing agents and reuse their specialized capabilities.
+With Microsoft Agent Framework 1.x the agents are **defined by your application code** rather than
+created as persistent server-side objects. The `azure-ai-projects` v2 SDK replaced the old
+`create_agent()` API with versioned agent definitions, and `agent_framework` now builds agents
+client-side with `Agent(FoundryChatClient(...))`.
 
-1. Find your agent IDs by going to the Azure AI Foundry Portal:
-   - Open [Azure AI Foundry](https://ai.azure.com/) in your browser
-   - Navigate to your project → **Agents** section
-   - Find each agent and copy their IDs from the agent details
+This means there are **no `*_AGENT_ID` values to copy**. Instead, confirm the two settings the
+workflow actually needs are present in your `.env` file:
 
-2. Add to your `.env` file:
-   ```bash
-   CUSTOMER_DATA_AGENT_ID=asst_XXXXXXXXXXXXXXXXXXXXXXXX
-   RISK_ANALYSER_AGENT_ID=asst_XXXXXXXXXXXXXXXXXXXXXXXX
-   COMPLIANCE_REPORT_AGENT_ID=asst_XXXXXXXXXXXXXXXXXXXXXXXX
-   ```
+```bash
+AI_FOUNDRY_PROJECT_ENDPOINT="https://<your-project>.services.ai.azure.com/api/projects/<project>"
+MODEL_DEPLOYMENT_NAME="gpt-5.4-mini"
+```
+
+The Risk Analyser additionally picks up your project's **Azure AI Search** connection automatically
+when one exists, and attaches the `regulations-policies` index as a tool.
 
 ## Step 3: Interactive Jupyter Notebook Workflow
 
@@ -189,7 +191,8 @@ Define type-safe Pydantic models for workflow data contracts:
 ### **Section 6: Risk Analyzer Executor** 🔍
 **Second stage executor** that:
 - Receives customer data analysis from the previous executor
-- Connects to your Azure AI Risk Analyzer Agent using the `RISK_ANALYSER_AGENT_ID`
+- Connects to Microsoft Foundry with `FoundryChatClient` and builds the agent with `Agent(...)`
+- Attaches the Azure AI Search tool automatically when a search connection exists on the project
 - Sends structured prompts for regulatory compliance assessment including AML/KYC evaluation
 - Parses AI responses to extract recommendations and compliance notes
 - Uses `await ctx.send_message(result)` to pass enhanced analysis to compliance reporting
@@ -197,15 +200,15 @@ Define type-safe Pydantic models for workflow data contracts:
 ### **Section 7-8: Compliance Report Functions & Executor** 📊
 **Final stage executor** featuring:
 - **Helper Functions**: `parse_risk_analysis_result()` and `generate_audit_report_from_risk_analysis()` for structured audit documentation
-- **AI Integration**: Optionally connects to compliance report agent using `COMPLIANCE_REPORT_AGENT_ID`
+- **AI Integration**: Set `COMPLIANCE_REPORT_USE_AGENT=false` to skip the AI-assisted narrative and generate the report locally
 - **Audit Generation**: Creates formal compliance reports with risk ratings, regulatory implications, and actionable recommendations
 - **Terminal Output**: Uses `await ctx.yield_output(result)` to provide final workflow results
 
 ### **Section 9-10: Workflow Orchestration** ⚙️
 **Complete workflow construction**:
 - **Sequential Builder**: Uses `WorkflowBuilder` to connect three executors with proper edge definitions
-- **Stream Execution**: `workflow.run_stream()` provides real-time event monitoring
-- **Result Processing**: Captures `WorkflowOutputEvent` for final compliance audit results
+- **Stream Execution**: `workflow.run(request, stream=True)` provides real-time event monitoring
+- **Result Processing**: Captures the `event.type == "output"` workflow event for final compliance audit results
 - **Comprehensive Display**: Shows audit report ID, compliance ratings, risk factors, and required actions
 
 ### **Section 11: Interactive Execution** ▶️

@@ -198,14 +198,12 @@ async def run_fraud_detection_workflow_with_request(request):
             # Import and modify the workflow function to accept our request
             from workflow_observability import (
                 WorkflowBuilder, customer_data_executor, 
-                risk_analyzer_executor, compliance_report_executor,
-                WorkflowOutputEvent
+                risk_analyzer_executor, compliance_report_executor
             )
             
             # Build workflow
             workflow = (
-                WorkflowBuilder()
-                .set_start_executor(customer_data_executor)
+                WorkflowBuilder(start_executor=customer_data_executor)
                 .add_edge(customer_data_executor, risk_analyzer_executor)
                 .add_edge(risk_analyzer_executor, compliance_report_executor)
                 .build()
@@ -213,8 +211,8 @@ async def run_fraud_detection_workflow_with_request(request):
             
             # Execute workflow with our specific request
             final_output = None
-            async for event in workflow.run_stream(request):
-                if isinstance(event, WorkflowOutputEvent):
+            async for event in workflow.run(request, stream=True):
+                if event.type == "output":
                     final_output = event.data
             
             return final_output

@@ -1,14 +1,11 @@
 import asyncio
 import os
-import importlib.util
-from pathlib import Path
-from typing import Annotated
-from azure.identity.aio import AzureCliCredential
-from agent_framework import ChatAgent
-from agent_framework.azure import AzureAIAgentClient
+
+from agent_framework import Agent
+from agent_framework.foundry import FoundryChatClient
 from azure.ai.projects.aio import AIProjectClient
 from azure.ai.projects.models import ConnectionType
-from pydantic import Field
+from azure.identity.aio import AzureCliCredential
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -28,17 +25,23 @@ async def main():
 
                 # Get Azure AI Search connection ID
                 ai_search_conn_id = ""
-                async for connection in project_client.connections.list():
-                    if connection.type == ConnectionType.AZURE_AI_SEARCH:
-                        ai_search_conn_id = connection.id
-                        break
+                async for connection in project_client.connections.list(
+                    connection_type=ConnectionType.AZURE_AI_SEARCH
+                ):
+                    ai_search_conn_id = connection.id
+                    break
 
                 if not ai_search_conn_id:
                     raise ValueError("Azure AI Search connection not found in project")
 
-                # Create persistent agent
-                created_agent = await project_client.agents.create_agent(
+                chat_client = FoundryChatClient(
+                    project_client=project_client,
                     model=model_deployment_name,
+                    credential=credential,
+                )
+
+                agent = Agent(
+                    chat_client,
                     name="RiskAnalyserAgent",
                     instructions="""You are a Risk Analyser Agent evaluating financial transactions for potential fraud.
                     Given a normalized transaction and customer profile, your task is to:
@@ -63,25 +66,15 @@ async def main():
                     - risk_score: integer (0-100)
                     - risk_level: [Low, Medium, High]
                     - reason: a brief explainable summary with references to relevant regulations or policies found via search""",
-                    tools=[{"type": "azure_ai_search"}],
-                    tool_resources={
-                        "azure_ai_search": {
-                            "indexes": [{
-                                "index_connection_id": ai_search_conn_id,
-                                "index_name": "regulations-policies",
-                                "query_type": "simple"
-                            }]
-                        }
-                    }
-                )
-                
-                # Wrap agent with tools for usage
-                agent = ChatAgent(
-                    chat_client=AzureAIAgentClient(
-                        project_client=project_client,
-                        agent_id=created_agent.id
-                    ),
-                    store=True
+                    # as_dict() is required: the SDK tool model is only shallow-copied downstream,
+                    # leaving nested models that are not JSON serializable.
+                    tools=[
+                        chat_client.get_azure_ai_search_tool(
+                            index_connection_id=ai_search_conn_id,
+                            index_name="regulations-policies",
+                            query_type="simple",
+                        ).as_dict()
+                    ],
                 )
 
                 # Test the agent with a simple query

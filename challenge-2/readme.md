@@ -129,26 +129,22 @@ Now, it is time to configure a simple Agent that uses the MCP server.
 
 The agent has been implemented for you in the `challenge-2/agents/fraud_alert_foundry_agent.py` file.
 
-We have left a placeholder in the code so you can add the MCP server as a tool. In line 29, find:
+We have left a placeholder in the code so you can add the MCP server as a tool. In line 73, find:
 
 ```python
-mcp_tool = < PLACEHOLDER FOR MCP TOOL >
+#TODO (Challenge 2)
 ```
 
 Replace it by:
 
 ```python
-mcp_tool = McpTool(
-    server_label="fraudalertmcp", 
-    server_url=mcp_endpoint,
-)
-mcp_tool.update_headers("Ocp-Apim-Subscription-Key",
-                        mcp_subscription_key)
+        mcp_tool = chat_client.get_mcp_tool(
+            name="fraudalertmcp",
+            url=mcp_endpoint,
+            headers={"Ocp-Apim-Subscription-Key": mcp_subscription_key},
+            approval_mode="never_require",
+        )
 ```
-
-About this configuration: 
-- The kind of tool is [McpTool](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/how-to/tools/model-context-protocol-samples?pivots=python#create-an-agent-with-the-mcp-tool)
-- The subscription key header is required to authenticate against the API Management instance. Good stuff if you want to control access to your MCP server!
 
 ### Run the Agent
 
@@ -170,10 +166,12 @@ See output on both terminals. You should see the agent sending requests to the F
 
 **Important**
 
-Add you new Agent Id for the Fraud Alert Agent to the `.env` file as follows:
+There is no agent ID to copy. With Microsoft Agent Framework 1.x the fraud alert agent is defined in
+your application code, so the workflow only needs the MCP settings already in your `.env` file:
 
 ```bash
-FRAUD_ALERT_AGENT_ID=<your_fraud_alert_agent_id>
+MCP_SERVER_ENDPOINT=<your_mcp_server_endpoint>
+APIM_SUBSCRIPTION_KEY=<your_apim_subscription_key>
 ```
 
 ## Part 3 - Let's onboard our new agent in our Workflow
@@ -237,14 +235,14 @@ Congratulations! You've successfully completed **Challenge 2: MCP Server Integra
 | Component | Achievement | Technology Used |
 |-----------|-------------|-----------------|
 | **MCP Server Creation** | Exposed existing API as MCP server | Azure API Management + OpenAPI |
-| **Hybrid Agent Architecture** | Combined Azure AI Foundry agents with AzureOpenAIResponsesClient | Microsoft Agent Framework |
-| **Secure Integration** | Connected compliance agent to external alert system | HostedMCPTool + API Management |
+| **Hybrid Agent Architecture** | Combined Microsoft Foundry agents with app-owned `Agent` + `FoundryChatClient` | Microsoft Agent Framework |
+| **Secure Integration** | Connected compliance agent to external alert system | Hosted MCP tool (`get_mcp_tool`) + API Management |
 | **Production Workflow** | Built 3-agent sequential fraud detection pipeline | Sequential Workflow Pattern |
 
 ### Key Learning Outcomes
 
 - **🔗 MCP Integration**: Converted REST APIs to MCP servers without code changes using Azure API Management
-- **🤖 Agent Architecture**: Strategic selection of agent types - AzureOpenAIResponsesClient for stateless operations, Azure AI Foundry agents for conversational workflows  
+- **🤖 Agent Architecture**: Strategic selection of agent types - app-owned `Agent` instances backed by `FoundryChatClient` for direct project inference, with hosted MCP tools for external integrations  
 - **🎯 Enterprise System**: Built production-ready fraud detection with 0-100 risk scoring, automated classification (LOW/MEDIUM/HIGH), and real-time alerting
 
 ### What's Next?

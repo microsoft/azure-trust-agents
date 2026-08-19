@@ -30,7 +30,7 @@ fi
 
 # Get resource group deployments, find deployments starting with 'Microsoft.Template' and sort them by timestamp
 echo "Getting the deployments in '$resourceGroupName'..."
-deploymentName=$(az deployment group list --resource-group $resourceGroupName --query "[?contains(name, 'Microsoft.Template') || contains(name, 'azuredeploy')].{name:name}[0].name" --output tsv)
+deploymentName=$(az deployment group list --resource-group $resourceGroupName --query "[?contains(name, 'Microsoft.Template') || contains(name, 'CustomDeployment')].{name:name}[0].name" --output tsv)
 if [ $? -ne 0 ]; then
     echo "Error occurred while fetching deployments. Exiting..."
     exit 1
@@ -392,8 +392,8 @@ else
 fi
 echo "AZURE_OPENAI_ENDPOINT=\"$azureOpenAIEndpoint\"" >> ../.env
 echo "AZURE_OPENAI_KEY=\"$aiFoundryKey\"" >> ../.env
-echo "AZURE_OPENAI_DEPLOYMENT_NAME=\"gpt-4.1-mini\"" >> ../.env
-echo "MODEL_DEPLOYMENT_NAME=\"gpt-4.1-mini\"" >> ../.env
+echo "AZURE_OPENAI_DEPLOYMENT_NAME=\"gpt-5.4-mini\"" >> ../.env
+echo "MODEL_DEPLOYMENT_NAME=\"gpt-5.4-mini\"" >> ../.env
 
 echo "Keys and properties are stored in '.env' file successfully."
 

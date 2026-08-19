@@ -45,6 +45,9 @@
       "apiVersion": "2023-03-01-preview",
       "name": "[format('{0}-apim-{1}', variables('prefix'), variables('suffix'))]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "sku": {
         "name": "BasicV2",
         "capacity": 1
@@ -59,6 +62,9 @@
       "apiVersion": "2023-05-01",
       "name": "[variables('storageAccountName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "sku": {
         "name": "Standard_LRS"
       },
@@ -75,6 +81,9 @@
       "apiVersion": "2021-06-01",
       "name": "[variables('logAnalyticsWorkspaceName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "properties": {
         "retentionInDays": 30,
         "features": {
@@ -90,6 +99,9 @@
       "apiVersion": "2023-04-15",
       "name": "[variables('cosmosDbAccountName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "kind": "GlobalDocumentDB",
       "identity": {
         "type": "SystemAssigned"
@@ -120,6 +132,9 @@
       "apiVersion": "2023-11-01",
       "name": "[variables('searchServiceName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "sku": {
         "name": "basic"
       },
@@ -134,6 +149,9 @@
       "apiVersion": "2023-07-01",
       "name": "[variables('containerRegistryName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "sku": {
         "name": "Basic"
       },
@@ -146,6 +164,9 @@
       "apiVersion": "2024-03-01",
       "name": "[variables('containerAppEnvironmentName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "properties": {
         "appLogsConfiguration": {
           "destination": "log-analytics",
@@ -164,6 +185,9 @@
       "apiVersion": "2024-03-01",
       "name": "[variables('containerAppName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "identity": {
         "type": "SystemAssigned"
       },
@@ -225,6 +249,9 @@
       "apiVersion": "2020-02-02",
       "name": "[variables('applicationInsightsName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "kind": "web",
       "properties": {
         "Application_Type": "web",
@@ -239,6 +266,9 @@
       "apiVersion": "2023-05-01",
       "name": "[variables('contentSafetyName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "identity": {
         "type": "SystemAssigned"
       },
@@ -257,6 +287,9 @@
       "apiVersion": "2025-04-01-preview",
       "name": "[variables('aiFoundryName')]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "identity": {
         "type": "SystemAssigned"
       },
@@ -275,6 +308,9 @@
       "apiVersion": "2025-04-01-preview",
       "name": "[format('{0}/{1}', variables('aiFoundryName'), variables('aiProjectName'))]",
       "location": "[parameters('location')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "identity": {
         "type": "SystemAssigned"
       },
@@ -286,14 +322,18 @@
     {
       "type": "Microsoft.CognitiveServices/accounts/deployments",
       "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('aiFoundryName'), 'gpt-4.1-mini')]",
+      "name": "[format('{0}/{1}', variables('aiFoundryName'), 'gpt-5.4-mini')]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "sku": {
         "capacity": 100,
         "name": "GlobalStandard"
       },
       "properties": {
         "model": {
-          "name": "gpt-4.1-mini",
+          "name": "gpt-5.4-mini",
+          "version": "2026-03-17",
           "format": "OpenAI"
         }
       },
@@ -305,6 +345,9 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName')), variables('cognitiveServicesUserRoleId'))]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "scope": "[format('Microsoft.CognitiveServices/accounts/{0}', variables('aiFoundryName'))]",
       "properties": {
         "roleDefinitionId": "[variables('cognitiveServicesUserRoleId')]",
@@ -320,6 +363,9 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.CognitiveServices/accounts', variables('aiFoundryName')), variables('searchServiceContributorRoleId'))]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "scope": "[format('Microsoft.Search/searchServices/{0}', variables('searchServiceName'))]",
       "properties": {
         "roleDefinitionId": "[variables('searchServiceContributorRoleId')]",
@@ -335,6 +381,9 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiFoundryName'), variables('aiProjectName')), variables('searchServiceContributorRoleId'))]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "scope": "[format('Microsoft.Search/searchServices/{0}', variables('searchServiceName'))]",
       "properties": {
         "roleDefinitionId": "[variables('searchServiceContributorRoleId')]",
@@ -350,6 +399,9 @@
       "type": "Microsoft.CognitiveServices/accounts/connections",
       "apiVersion": "2025-04-01-preview",
       "name": "[format('{0}/{1}-aisearch', variables('aiFoundryName'), variables('aiFoundryName'))]",
+      "tags": {
+        "SecurityControl": "ignore"
+      },
       "properties": {
         "category": "CognitiveSearch",
         "target": "[format('https://{0}.search.windows.net', variables('searchServiceName'))]",

@@ -1,12 +1,11 @@
 import asyncio
 import os
-from typing import Annotated
-from azure.identity.aio import AzureCliCredential
-from agent_framework.azure import AzureAIAgentClient
-from agent_framework import ChatAgent
+
+from agent_framework import Agent
+from agent_framework.foundry import FoundryChatClient
 from azure.cosmos import CosmosClient
+from azure.identity.aio import AzureCliCredential
 from dotenv import load_dotenv
-from pydantic import Field
 
 load_dotenv(override=True)
 
@@ -25,9 +24,9 @@ transactions_container = database.get_container_client("Transactions")
 def get_customer_data(customer_id: str) -> dict:
     """Get customer data from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
         items = list(customers_container.query_items(
-            query=query,
+            query="SELECT * FROM c WHERE c.customer_id = @customer_id",
+            parameters=[{"name": "@customer_id", "value": customer_id}],
             enable_cross_partition_query=True
         ))
         return items[0] if items else {"error": f"Customer {customer_id} not found"}
@@ -37,9 +36,9 @@ def get_customer_data(customer_id: str) -> dict:
 def get_customer_transactions(customer_id: str) -> list:
     """Get all transactions for a customer from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
         items = list(transactions_container.query_items(
-            query=query,
+            query="SELECT * FROM c WHERE c.customer_id = @customer_id",
+            parameters=[{"name": "@customer_id", "value": customer_id}],
             enable_cross_partition_query=True
         ))
         return items
@@ -49,9 +48,9 @@ def get_customer_transactions(customer_id: str) -> list:
 def get_transaction_data(transaction_id: str) -> dict:
     """Get transaction data from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.transaction_id = '{transaction_id}'"
         items = list(transactions_container.query_items(
-            query=query,
+            query="SELECT * FROM c WHERE c.transaction_id = @transaction_id",
+            parameters=[{"name": "@transaction_id", "value": transaction_id}],
             enable_cross_partition_query=True
         ))
         return items[0] if items else {"error": f"Transaction {transaction_id} not found"}
@@ -59,7 +58,12 @@ def get_transaction_data(transaction_id: str) -> dict:
         return {"error": str(e)}
 
 # Create the agent instance following Agent Framework DevUI conventions
-agent = ChatAgent(
+agent = Agent(
+    FoundryChatClient(
+        project_endpoint=project_endpoint,
+        model=model_deployment_name,
+        credential=AzureCliCredential(),
+    ),
     name="CustomerDataAgent",
     description="Data ingestion agent for retrieving and enriching customer and transaction data from Cosmos DB",
     instructions="""You are a Data Ingestion Agent responsible for preparing structured input for fraud detection. 
@@ -77,11 +81,6 @@ agent = ChatAgent(
     Use these functions to enrich and validate the transaction data.
     Ensure the format is consistent and ready for analysis.
     """,
-    chat_client=AzureAIAgentClient(
-        project_endpoint=project_endpoint,
-        model_deployment_name=model_deployment_name,
-        async_credential=AzureCliCredential()
-    ),
     tools=[
         get_customer_data,
         get_customer_transactions,

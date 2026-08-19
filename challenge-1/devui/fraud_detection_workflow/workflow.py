@@ -5,8 +5,8 @@ import re
 from datetime import datetime
 from collections import Counter
 from typing_extensions import Never
-from agent_framework import WorkflowBuilder, WorkflowContext, WorkflowOutputEvent, executor, ChatAgent
-from agent_framework.azure import AzureAIAgentClient
+from agent_framework import WorkflowBuilder, WorkflowContext, executor, Agent
+from agent_framework.foundry import FoundryChatClient
 from azure.identity.aio import AzureCliCredential
 from azure.cosmos import CosmosClient
 from dotenv import load_dotenv
@@ -27,9 +27,9 @@ transactions_container = database.get_container_client("Transactions")
 def get_transaction_data(transaction_id: str) -> dict:
     """Get transaction data from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.transaction_id = '{transaction_id}'"
         items = list(transactions_container.query_items(
-            query=query,
+            query="SELECT * FROM c WHERE c.transaction_id = @transaction_id",
+            parameters=[{"name": "@transaction_id", "value": transaction_id}],
             enable_cross_partition_query=True
         ))
         return items[0] if items else {"error": f"Transaction {transaction_id} not found"}
@@ -39,9 +39,9 @@ def get_transaction_data(transaction_id: str) -> dict:
 def get_customer_data(customer_id: str) -> dict:
     """Get customer data from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
         items = list(customers_container.query_items(
-            query=query,
+            query="SELECT * FROM c WHERE c.customer_id = @customer_id",
+            parameters=[{"name": "@customer_id", "value": customer_id}],
             enable_cross_partition_query=True
         ))
         return items[0] if items else {"error": f"Customer {customer_id} not found"}
@@ -51,9 +51,9 @@ def get_customer_data(customer_id: str) -> dict:
 def get_customer_transactions(customer_id: str) -> list:
     """Get all transactions for a customer from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
         items = list(transactions_container.query_items(
-            query=query,
+            query="SELECT * FROM c WHERE c.customer_id = @customer_id",
+            parameters=[{"name": "@customer_id", "value": customer_id}],
             enable_cross_partition_query=True
         ))
         return items
@@ -357,21 +357,19 @@ async def risk_analyzer_executor(
     try:
         # Configuration
         project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
-        model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
-        
+        model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME")
+
         async with AzureCliCredential() as credential:
-            risk_client = AzureAIAgentClient(
+            chat_client = FoundryChatClient(
                 project_endpoint=project_endpoint,
-                model_deployment_name=model_deployment_name,
-                async_credential=credential
+                model=model_deployment_name,
+                credential=credential,
             )
-            
-            async with risk_client as client:
-                risk_agent = ChatAgent(
-                    chat_client=client,
-                    model_id=model_deployment_name,
-                    name="RiskAnalyzerAgent",
-                    instructions="""You are a Risk Analyser Agent evaluating financial transactions for potential fraud.
+
+            risk_agent = Agent(
+                chat_client,
+                name="RiskAnalyzerAgent",
+                instructions="""You are a Risk Analyser Agent evaluating financial transactions for potential fraud.
                     Given a normalized transaction and customer profile, your task is to:
                     - Apply fraud detection logic using rule-based checks and regulatory compliance data
                     - Assign a fraud risk score from 0 to 100
@@ -387,10 +385,10 @@ async def risk_analyzer_executor(
                     - risk_score: integer (0-100)
                     - risk_level: [Low, Medium, High]
                     - reason: brief explainable summary with regulatory considerations""",
-                )
-                
-                # Create risk assessment prompt
-                risk_prompt = f"""
+            )
+
+            # Create risk assessment prompt
+            risk_prompt = f"""
 Based on the comprehensive fraud analysis provided below, please provide your expert regulatory and compliance risk assessment:
 
 Analysis Data: {customer_response.customer_data}
@@ -407,37 +405,37 @@ Transaction ID: {customer_response.transaction_id}
 
 Provide a structured risk assessment with clear regulatory justification.
 """
-                
-                result = await risk_agent.run(risk_prompt)
-                result_text = result.text if result and hasattr(result, 'text') else "No response from risk agent"
-                
-                # Parse structured risk data
-                risk_factors = []
-                recommendation = "INVESTIGATE"  # Default
-                compliance_notes = ""
-                
-                if "HIGH RISK" in result_text.upper() or "BLOCK" in result_text.upper():
-                    recommendation = "BLOCK"
-                    risk_factors.append("High risk transaction identified")
-                elif "LOW RISK" in result_text.upper() or "APPROVE" in result_text.upper():
-                    recommendation = "APPROVE"
-                
-                if "IRAN" in result_text.upper() or "SANCTIONS" in result_text.upper():
-                    compliance_notes = "Sanctions compliance review required"
-                    
-                final_result = RiskAnalysisResponse(
-                    risk_analysis=result_text,
-                    risk_score="Assessed by Risk Agent based on Cosmos DB data",
-                    transaction_id=customer_response.transaction_id,
-                    status="SUCCESS",
-                    risk_factors=risk_factors,
-                    recommendation=recommendation,
-                    compliance_notes=compliance_notes
-                )
-                
-                # Send data to next executor (compliance report executor)
-                await ctx.send_message(final_result)
-        
+
+            result = await risk_agent.run(risk_prompt)
+            result_text = result.text if result and hasattr(result, 'text') else "No response from risk agent"
+
+            # Parse structured risk data
+            risk_factors = []
+            recommendation = "INVESTIGATE"  # Default
+            compliance_notes = ""
+
+            if "HIGH RISK" in result_text.upper() or "BLOCK" in result_text.upper():
+                recommendation = "BLOCK"
+                risk_factors.append("High risk transaction identified")
+            elif "LOW RISK" in result_text.upper() or "APPROVE" in result_text.upper():
+                recommendation = "APPROVE"
+
+            if "IRAN" in result_text.upper() or "SANCTIONS" in result_text.upper():
+                compliance_notes = "Sanctions compliance review required"
+
+            final_result = RiskAnalysisResponse(
+                risk_analysis=result_text,
+                risk_score="Assessed by Risk Agent based on Cosmos DB data",
+                transaction_id=customer_response.transaction_id,
+                status="SUCCESS",
+                risk_factors=risk_factors,
+                recommendation=recommendation,
+                compliance_notes=compliance_notes
+            )
+
+            # Send data to next executor (compliance report executor)
+            await ctx.send_message(final_result)
+
     except Exception as e:
         error_result = RiskAnalysisResponse(
             risk_analysis=f"Error in risk analysis: {str(e)}",
@@ -457,7 +455,7 @@ async def compliance_report_executor(
     try:
         # Configuration
         project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
-        model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-4o-mini")
+        model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME")
         
         # Generate audit report using local functions
         audit_report = generate_audit_report_from_risk_analysis(
@@ -508,9 +506,9 @@ async def compliance_report_executor(
 workflow = (
     WorkflowBuilder(
         name="Fraud Detection Workflow",
-        description="3-step fraud detection workflow: Customer Data → Risk Analysis → Compliance Report"
+        description="3-step fraud detection workflow: Customer Data → Risk Analysis → Compliance Report",
+        start_executor=customer_data_executor,
     )
-    .set_start_executor(customer_data_executor)
     .add_edge(customer_data_executor, risk_analyzer_executor)
     .add_edge(risk_analyzer_executor, compliance_report_executor)
     .build()
